@@ -1,34 +1,15 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+// 프로젝트 루트에 위치
+// Next.js가 이 파일을 찾아서 실행함
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'  // 헬퍼 함수 import
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-  
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  const isAuthPage = req.nextUrl.pathname === '/login' || 
-                     req.nextUrl.pathname === '/signup' ||
-                     req.nextUrl.pathname === '/'
-  
-  const isProtectedRoute = req.nextUrl.pathname.startsWith('/dashboard') ||
-                          req.nextUrl.pathname.startsWith('/influencer') ||
-                          req.nextUrl.pathname.startsWith('/profile')
-  
-  if (!session && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-  
-  if (session && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-  
-  return res
+export async function middleware(request: NextRequest) {
+  // lib/supabase/middleware.ts의 updateSession 함수 호출
+  return await updateSession(request)
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

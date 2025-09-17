@@ -1,52 +1,61 @@
--- 샘플 인플루언서 데이터 삽입
-INSERT INTO public.influencers (name, instagram_handle, profile_image, bio, category_id, followers_count, location, email, is_verified) 
-VALUES 
-  ('김민지', 'minji_fashion', 'https://ui-avatars.com/api/?name=김민지&background=FF6B6B&color=fff', 
-   '패션 인플루언서 | 일상룩 | 협업문의 DM', 
-   (SELECT id FROM categories WHERE slug = 'fashion'), 
-   52000, '서울', 'minji@example.com', true),
-   
-  ('이수현', 'soohyun_beauty', 'https://ui-avatars.com/api/?name=이수현&background=4ECDC4&color=fff',
-   '뷰티 크리에이터 ✨ 메이크업 튜토리얼', 
-   (SELECT id FROM categories WHERE slug = 'beauty'), 
-   128000, '서울', 'soohyun@example.com', true),
-   
-  ('박준호', 'junho_food', 'https://ui-avatars.com/api/?name=박준호&background=95E1D3&color=fff',
-   '맛집 탐방 | 푸드 리뷰어 🍔', 
-   (SELECT id FROM categories WHERE slug = 'food'), 
-   89000, '부산', 'junho@example.com', true),
-   
-  ('정하늘', 'haneul_travel', 'https://ui-avatars.com/api/?name=정하늘&background=F38181&color=fff',
-   '세계여행 | 여행 팁 공유 ✈️', 
-   (SELECT id FROM categories WHERE slug = 'travel'), 
-   234000, '제주', 'haneul@example.com', true),
-   
-  ('김태양', 'taeyang_fitness', 'https://ui-avatars.com/api/?name=김태양&background=AA96DA&color=fff',
-   '헬스 트레이너 | 운동 루틴 공유 💪', 
-   (SELECT id FROM categories WHERE slug = 'fitness'), 
-   167000, '서울', 'taeyang@example.com', false),
-   
-  ('이서연', 'seoyeon_lifestyle', 'https://ui-avatars.com/api/?name=이서연&background=FCBAD3&color=fff',
-   '라이프스타일 | 인테리어 | 일상', 
-   (SELECT id FROM categories WHERE slug = 'lifestyle'), 
-   445000, '서울', 'seoyeon@example.com', true),
-   
-  ('최민수', 'minsu_tech', 'https://ui-avatars.com/api/?name=최민수&background=A8D8EA&color=fff',
-   '테크 리뷰어 | 가젯 소개 📱', 
-   (SELECT id FROM categories WHERE slug = 'tech'), 
-   93000, '판교', 'minsu@example.com', false),
-   
-  ('박지은', 'jieun_gaming', 'https://ui-avatars.com/api/?name=박지은&background=FFFFD2&color=333',
-   '게임 스트리머 | e스포츠 🎮', 
-   (SELECT id FROM categories WHERE slug = 'gaming'), 
-   321000, '서울', 'jieun@example.com', true);
-
--- 샘플 인플루언서 통계 데이터
-INSERT INTO public.influencer_stats (influencer_id, avg_likes, avg_comments, engagement_rate, posts_per_month)
-SELECT 
+-- 인플루언서 seed 데이터 삽입
+INSERT INTO public.influencers (
   id,
-  FLOOR(followers_count * 0.05 + RANDOM() * followers_count * 0.03),
-  FLOOR(followers_count * 0.01 + RANDOM() * followers_count * 0.005),
-  3.5 + RANDOM() * 4.5,
-  15 + FLOOR(RANDOM() * 15)
-FROM public.influencers;
+  user_id,
+  instagram_handle,
+  full_name,
+  bio,
+  category,
+  location,
+  followers_count,
+  engagement_rate,
+  profile_picture_url,
+  is_public,
+  is_verified
+) VALUES 
+-- 패션/뷰티 인플루언서
+('a1111111-1111-1111-1111-111111111111', NULL, 'dlwlrma', '아이유 (IU)', '가수/배우 IU 공식 인스타그램', '패션', '서울', 32000000, 3.50, 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop', true, true),
+('a2222222-2222-2222-2222-222222222222', NULL, 'jessica.syj', '제시카 (Jessica)', '패션 브랜드 BLANC & ECLARE CEO', '패션', '서울', 11934011, 2.80, 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop', true, true),
+('a3333333-3333-3333-3333-333333333333', NULL, 'hyunah_aa', '포니 (PONY)', '메이크업 아티스트 & 뷰티 크리에이터', '뷰티', '서울', 8746801, 4.20, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop', true, true),
+('a4444444-4444-4444-4444-444444444444', NULL, 'today_is_wendy', '오늘의집', '라이프스타일 & 인테리어 플랫폼', '라이프스타일', '서울', 1311961, 5.10, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop', true, false),
+('a5555555-5555-5555-5555-555555555555', NULL, 'lisa.beauty', '리사베', '뷰티 & 스킨케어 인플루언서', '뷰티', '서울', 1303371, 6.80, 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop', true, false),
+('a6666666-6666-6666-6666-666666666666', NULL, 'simondom', '심으뜸', '패션 & 라이프스타일 크리에이터', '패션', '서울', 831538, 4.50, 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop', true, false),
+
+-- 음식/여행 인플루언서  
+('b1111111-1111-1111-1111-111111111111', NULL, 'foodie_seoul', '서울푸디', '맛집 탐방 & 음식 리뷰', '음식', '서울', 523400, 7.20, 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=200&h=200&fit=crop', true, false),
+('b2222222-2222-2222-2222-222222222222', NULL, 'travel_korea', '한국여행가', '국내외 여행 & 호텔 리뷰', '여행', '부산', 412300, 5.60, 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=200&h=200&fit=crop', true, false),
+('b3333333-3333-3333-3333-333333333333', NULL, 'cafe_hunter', '카페헌터', '카페 투어 & 디저트 리뷰', '음식', '서울', 385200, 8.30, 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=200&h=200&fit=crop', true, false),
+
+-- 피트니스/건강 인플루언서
+('c1111111-1111-1111-1111-111111111111', NULL, 'fitness_pro', '피트니스프로', '운동 루틴 & 건강 정보', '피트니스', '서울', 298500, 9.10, 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop', true, false),
+('c2222222-2222-2222-2222-222222222222', NULL, 'yoga_daily', '요가데일리', '요가 & 명상 가이드', '피트니스', '제주', 187300, 10.20, 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop', true, false),
+('c3333333-3333-3333-3333-333333333333', NULL, 'healthy_life', '헬시라이프', '건강한 식단 & 운동법', '피트니스', '서울', 156200, 7.80, 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop', true, false),
+
+-- 테크/게임 인플루언서
+('d1111111-1111-1111-1111-111111111111', NULL, 'tech_reviewer', '테크리뷰어', '최신 기술 제품 리뷰', '테크', '서울', 245600, 4.30, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop', true, false),
+('d2222222-2222-2222-2222-222222222222', NULL, 'game_master', '게임마스터', '게임 공략 & 리뷰', '게임', '서울', 198700, 6.50, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop', true, false),
+('d3333333-3333-3333-3333-333333333333', NULL, 'dev_korea', '개발자코리아', '개발 튜토리얼 & 팁', '테크', '판교', 145300, 5.90, 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&h=200&fit=crop', true, false);
+
+-- 인플루언서 통계 데이터 추가
+INSERT INTO public.influencer_stats (
+  influencer_id,
+  avg_likes,
+  avg_comments,
+  engagement_rate,
+  posts_per_month
+) VALUES 
+('a1111111-1111-1111-1111-111111111111', 1120000, 45000, 3.50, 15),
+('a2222222-2222-2222-2222-222222222222', 334352, 12000, 2.80, 22),
+('a3333333-3333-3333-3333-333333333333', 367365, 18500, 4.20, 28),
+('a4444444-4444-4444-4444-444444444444', 67010, 3200, 5.10, 45),
+('a5555555-5555-5555-5555-555555555555', 88629, 4100, 6.80, 35),
+('a6666666-6666-6666-6666-666666666666', 37419, 2300, 4.50, 30),
+('b1111111-1111-1111-1111-111111111111', 37684, 2850, 7.20, 52),
+('b2222222-2222-2222-2222-222222222222', 23088, 1560, 5.60, 18),
+('b3333333-3333-3333-3333-333333333333', 31971, 2400, 8.30, 40),
+('c1111111-1111-1111-1111-111111111111', 27163, 1900, 9.10, 25),
+('c2222222-2222-2222-2222-222222222222', 19104, 1250, 10.20, 20),
+('c3333333-3333-3333-3333-333333333333', 12183, 890, 7.80, 30),
+('d1111111-1111-1111-1111-111111111111', 10561, 750, 4.30, 15),
+('d2222222-2222-2222-2222-222222222222', 12915, 980, 6.50, 22),
+('d3333333-3333-3333-3333-333333333333', 8572, 620, 5.90, 18);
