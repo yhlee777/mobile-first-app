@@ -1,19 +1,62 @@
-﻿import Link from "next/link"
-import { Button } from "@/components/ui/button"
+﻿'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { 
+  Building, 
+  User, 
+  ChevronDown,
+  X
+} from 'lucide-react'
 
 export default function Home() {
+  const [showLoginMenu, setShowLoginMenu] = useState(false)
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
         <div className="container mx-auto max-w-7xl flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="font-bold text-2xl sm:text-3xl text-green-600">itda</div>
           <nav className="flex gap-2 sm:gap-4">
-            <Link href="/influencer/login">
-              <Button variant="ghost" className="text-sm sm:text-base">로그인</Button>
-            </Link>
-            <Link href="/influencer/signup">
-              <Button className="text-sm sm:text-base">회원가입</Button>
-            </Link>
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                className="text-sm sm:text-base"
+                onClick={() => setShowLoginMenu(!showLoginMenu)}
+              >
+                로그인
+                <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${showLoginMenu ? 'rotate-180' : ''}`} />
+              </Button>
+              
+              {showLoginMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowLoginMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
+                    <Link 
+                      href="/auth/login"
+                      className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 transition-colors rounded-t-lg"
+                      onClick={() => setShowLoginMenu(false)}
+                    >
+                      <Building className="h-4 w-4" />
+                      <span>광고주 로그인</span>
+                    </Link>
+                    <Link 
+                      href="/influencer/login"
+                      className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 transition-colors rounded-b-lg"
+                      onClick={() => setShowLoginMenu(false)}
+                    >
+                      <User className="h-4 w-4" />
+                      <span>인플루언서 로그인</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
           </nav>
         </div>
       </header>

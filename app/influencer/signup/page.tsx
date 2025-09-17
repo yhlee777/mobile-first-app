@@ -209,12 +209,12 @@ export default function InfluencerSignupPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              이미 계정이 있으신가요?{' '}
-              <Link href="/influencer/login" className="text-green-600 hover:text-green-700 font-medium">
-                로그인
-              </Link>
-            </p>
+            <Link 
+              href="/influencer/login" 
+              className="inline-block px-4 py-2 text-sm text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              이미 계정이 있으신가요? <span className="font-medium">로그인</span>
+            </Link>
           </div>
         </CardContent>
       </Card>
