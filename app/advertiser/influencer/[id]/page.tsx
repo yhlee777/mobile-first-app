@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +25,8 @@ import {
   Star,
   Activity,
   Calendar,
-  X
+  X,
+  Loader2
 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 
@@ -37,423 +39,461 @@ interface Influencer {
   location?: string
   followers_count: number
   engagement_rate: number
-  profile_picture_url?: string
+  profile_image?: string
   is_verified?: boolean
-  media_urls?: string[]
-  total_reach?: number
-  average_likes?: number
   portfolio_urls?: string[]
-}
-
-const mockInfluencersData: Record<string, Influencer> = {
-  '1': {
-    id: '1',
-    name: '방방뷔',
-    instagram_handle: 'bangbangvui',
-    bio: '일상 속 특별한 순간을 담는 인플루언서입니다. 패션, 뷰티, 라이프스타일 콘텐츠를 통해 여러분의 일상에 영감을 드리고자 합니다.',
-    category: '일상',
-    location: '서울',
-    followers_count: 20000,
-    engagement_rate: 4.2,
-    average_likes: 840,
-    profile_picture_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
-    is_verified: true,
-    portfolio_urls: [
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&h=800&fit=crop'
-    ]
-  },
-  '2': {
-    id: '2',
-    name: '아이유 (IU)',
-    instagram_handle: 'dlwlrma',
-    bio: '가수 배우 IU 공식 인스타그램. 음악, 드라마, 일상을 공유합니다.',
-    category: '셀럽',
-    location: '서울',
-    followers_count: 32000000,
-    engagement_rate: 8.5,
-    average_likes: 2720000,
-    profile_picture_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
-    is_verified: true,
-    portfolio_urls: [
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=800&fit=crop'
-    ]
-  },
-  '3': {
-    id: '3',
-    name: '제시카 (Jessica)',
-    instagram_handle: 'jessica.syj',
-    bio: '패션 뷰티 크리에이터. 일상 속 특별함을 찾아 공유합니다.',
-    category: '패션',
-    location: '서울',
-    followers_count: 11934011,
-    engagement_rate: 5.2,
-    average_likes: 620569,
-    profile_picture_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop',
-    is_verified: true,
-    portfolio_urls: []  // 빈 배열로 테스트
-  },
-  '4': {
-    id: '4',
-    name: '포니 (PONY)',
-    instagram_handle: 'ponysmakeup',
-    bio: '메이크업 아티스트 포니. 뷰티 튜토리얼과 메이크업 팁을 공유합니다.',
-    category: '뷰티',
-    location: '서울',
-    followers_count: 8746801,
-    engagement_rate: 6.8,
-    average_likes: 594782,
-    profile_picture_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-    is_verified: true,
-    portfolio_urls: [
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=800&fit=crop',
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&h=800&fit=crop'
-    ]
-  }
+  created_at?: string
+  updated_at?: string
 }
 
 export default function InfluencerDetailPage() {
   const params = useParams()
+  const router = useRouter()
+  const supabase = createClient()
+  
   const [isLiked, setIsLiked] = useState(false)
   const [influencer, setInfluencer] = useState<Influencer | null>(null)
+  const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [showShare, setShowShare] = useState(false)
   
   const influencerId = params?.id as string
 
   useEffect(() => {
-    if (influencerId && mockInfluencersData[influencerId]) {
-      setInfluencer(mockInfluencersData[influencerId])
-    } else {
-      setInfluencer({
-        id: influencerId,
-        name: '인플루언서',
-        instagram_handle: 'influencer',
-        bio: '인플루언서 소개',
-        category: '카테고리',
-        location: '서울',
-        followers_count: 10000,
-        engagement_rate: 3.5,
-        average_likes: 420,
-        profile_picture_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
-        is_verified: false,
-        portfolio_urls: []
-      })
+    if (influencerId) {
+      loadInfluencerData()
+      checkIfLiked()
     }
   }, [influencerId])
 
-  const getCategoryColor = (category: string) => {
-    const colorMap: Record<string, string> = {
-      '패션': 'bg-purple-100 text-purple-700 border-purple-200',
-      '뷰티': 'bg-pink-100 text-pink-700 border-pink-200',
-      '여행': 'bg-blue-100 text-blue-700 border-blue-200',
-      '음식': 'bg-orange-100 text-orange-700 border-orange-200',
-      '피트니스': 'bg-green-100 text-green-700 border-green-200',
-      '일상': 'bg-gray-100 text-gray-700 border-gray-200',
-      '라이프스타일': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      '셀럽': 'bg-red-100 text-red-700 border-red-200'
+  const loadInfluencerData = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('influencers')
+        .select('*')
+        .eq('id', influencerId)
+        .single()
+
+      if (error) {
+        console.error('Error loading influencer:', error)
+        // 에러 시 목록으로 돌아가기
+        router.push('/advertiser')
+        return
+      }
+
+      if (data) {
+        setInfluencer({
+          id: data.id,
+          instagram_handle: data.instagram_handle || '',
+          name: data.name || data.instagram_handle || '이름 미설정',
+          bio: data.bio || '',
+          category: data.category || '미분류',
+          location: data.location || '미설정',
+          followers_count: data.followers_count || 0,
+          engagement_rate: data.engagement_rate || 0,
+          profile_image: data.profile_image || '',
+          is_verified: data.is_verified || false,
+          portfolio_urls: data.portfolio_urls || [],
+          created_at: data.created_at,
+          updated_at: data.updated_at
+        })
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
     }
-    return colorMap[category] || 'bg-gray-100 text-gray-700 border-gray-200'
+  }
+
+  const checkIfLiked = async () => {
+    try {
+      const savedLikes = localStorage.getItem('likedInfluencers')
+      if (savedLikes) {
+        const likes = JSON.parse(savedLikes)
+        setIsLiked(likes.includes(influencerId))
+      }
+    } catch (error) {
+      console.error('Error checking likes:', error)
+    }
+  }
+
+  const handleLikeToggle = () => {
+    try {
+      const savedLikes = localStorage.getItem('likedInfluencers')
+      let likes = savedLikes ? JSON.parse(savedLikes) : []
+      
+      if (isLiked) {
+        likes = likes.filter((id: string) => id !== influencerId)
+      } else {
+        likes.push(influencerId)
+      }
+      
+      localStorage.setItem('likedInfluencers', JSON.stringify(likes))
+      setIsLiked(!isLiked)
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
   }
 
   const handleShare = async () => {
+    const url = window.location.href
     if (navigator.share) {
       try {
         await navigator.share({
           title: `${influencer?.name} - 인플루언서 프로필`,
-          text: `${influencer?.bio}`,
-          url: window.location.href,
+          text: influencer?.bio || '',
+          url: url
         })
-      } catch (error) {
-        console.log('공유 취소 또는 오류:', error)
+      } catch (err) {
+        console.log('Share failed:', err)
       }
     } else {
-      setShowShare(true)
-      setTimeout(() => setShowShare(false), 2000)
+      // 클립보드에 복사
+      navigator.clipboard.writeText(url)
+      alert('링크가 복사되었습니다!')
     }
   }
 
-  if (!influencer) {
+  const categoryColor = {
+    '패션': 'bg-pink-100 text-pink-700',
+    '뷰티': 'bg-purple-100 text-purple-700',
+    '음식': 'bg-orange-100 text-orange-700',
+    '여행': 'bg-blue-100 text-blue-700',
+    '피트니스': 'bg-green-100 text-green-700',
+    '테크': 'bg-gray-100 text-gray-700',
+    '라이프스타일': 'bg-amber-100 text-amber-700',
+    '육아': 'bg-yellow-100 text-yellow-700',
+    '기타': 'bg-gray-100 text-gray-700'
+  }[influencer?.category || '기타'] || 'bg-gray-100 text-gray-700'
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          <p className="text-gray-500">프로필을 불러오는 중...</p>
+        </div>
       </div>
     )
   }
 
-  const instagramUrl = 'https://instagram.com/' + influencer.instagram_handle
-  const categoryColor = getCategoryColor(influencer.category)
+  if (!influencer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">인플루언서를 찾을 수 없습니다</p>
+          <Button onClick={() => router.push('/advertiser')}>
+            목록으로 돌아가기
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 평균 좋아요 계산 (팔로워 * 참여율)
+  const averageLikes = Math.round((influencer.followers_count * influencer.engagement_rate) / 100)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* 상단 네비게이션 */}
-      <div className="bg-white border-b sticky top-0 z-30 backdrop-blur-lg bg-white/95">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/advertiser">
-              <Button variant="ghost" size="sm" className="p-2">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-base sm:text-lg font-semibold truncate max-w-[150px] sm:max-w-none">
-              {influencer.name}
-            </h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-2"
-              onClick={handleShare}
-            >
-              <Share2 className="h-5 w-5" />
-            </Button>
+    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
+      {/* 헤더 */}
+      <div className="sticky top-0 z-40 bg-white border-b">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
-              size="sm"
-              className="p-2"
-              onClick={() => setIsLiked(!isLiked)}
+              onClick={() => router.back()}
+              className="flex items-center gap-2"
             >
-              <Heart className={`h-5 w-5 transition-all ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">뒤로가기</span>
             </Button>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleShare}
+              >
+                <Share2 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant={isLiked ? "default" : "outline"}
+                size="icon"
+                onClick={handleLikeToggle}
+                className={isLiked ? "bg-red-500 hover:bg-red-600 border-red-500" : ""}
+              >
+                <Heart className={`h-5 w-5 ${isLiked ? "fill-white text-white" : ""}`} />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {showShare && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-black text-white px-4 py-2 rounded-lg z-50 shadow-lg">
-          링크가 복사되었습니다
-        </div>
-      )}
-
-      {/* 프로필 헤더 섹션 */}
-      <div className="bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-            {/* 프로필 이미지 */}
-            <div className="relative">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-green-100 shadow-xl">
-                <img 
-                  src={influencer.profile_picture_url} 
-                  alt={influencer.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {influencer.is_verified && (
-                <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-1.5 border-4 border-white">
-                  <CheckCircle className="h-4 w-4 text-white" />
-                </div>
-              )}
-            </div>
-
-            {/* 프로필 정보 */}
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-2">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {influencer.name}
-                </h2>
-                <Badge className={`${categoryColor} border font-semibold px-3 py-0.5`}>
-                  {influencer.category}
-                </Badge>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 text-sm text-gray-600 mb-3">
-                <div className="flex items-center gap-1">
-                  <Instagram className="h-4 w-4" />
-                  <span>@{influencer.instagram_handle}</span>
-                </div>
-                {influencer.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{influencer.location}</span>
+      {/* 메인 콘텐츠 - 모바일에서 하단 패딩 추가 */}
+      <div className="pb-20 sm:pb-0">
+        {/* 프로필 섹션 */}
+        <div className="bg-white border-b">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+              {/* 프로필 이미지 */}
+              <div className="relative">
+                {influencer.profile_image ? (
+                  <img
+                    src={influencer.profile_image}
+                    alt={influencer.name}
+                    className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover border-4 border-green-100"
+                  />
+                ) : (
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                    <Users className="h-16 w-16 text-white" />
+                  </div>
+                )}
+                {influencer.is_verified && (
+                  <div className="absolute bottom-2 right-2 bg-blue-500 rounded-full p-1">
+                    <CheckCircle className="h-5 w-5 text-white" />
                   </div>
                 )}
               </div>
 
-              {/* 모바일용 스탯 미리보기 */}
-              <div className="flex sm:hidden justify-center gap-8 py-3">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">
-                    {formatNumber(influencer.followers_count)}
-                  </p>
-                  <p className="text-xs text-gray-500">팔로워</p>
+              {/* 정보 */}
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {influencer.name}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <Badge className={categoryColor}>
+                      {influencer.category}
+                    </Badge>
+                    {influencer.location && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {influencer.location}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">
-                    {influencer.engagement_rate}%
-                  </p>
-                  <p className="text-xs text-gray-500">참여율</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">
-                    {formatNumber(influencer.average_likes || 0)}
-                  </p>
-                  <p className="text-xs text-gray-500">평균 좋아요</p>
-                </div>
+
+                <p className="text-gray-600 mb-4">@{influencer.instagram_handle}</p>
+                
+                {influencer.bio && (
+                  <p className="text-gray-700 max-w-2xl mb-4">{influencer.bio}</p>
+                )}
+
+                <Button 
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  onClick={() => window.open(`https://instagram.com/${influencer.instagram_handle}`, '_blank')}
+                >
+                  Instagram 프로필 보기
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* 소개 */}
-          <div className="mt-4">
-            <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
-              {influencer.bio}
-            </p>
-          </div>
-
-          {/* 인스타그램 버튼 */}
-          <div className="mt-6">
-            <Button 
-              variant="outline"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 border-2"
-              onClick={() => window.open(instagramUrl, '_blank')}
-            >
-              <Instagram className="h-5 w-5" />
-              Instagram 프로필 보기
-              <ExternalLink className="h-4 w-4" />
-            </Button>
+        {/* 통계 카드 - 모바일 */}
+        <div className="sm:hidden px-4 py-6">
+          <h3 className="font-semibold text-gray-900 mb-4">성과 지표</h3>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-2xl border border-blue-200">
+              <Users className="h-8 w-8 text-blue-600 mb-2" />
+              <p className="text-2xl font-bold text-gray-900">
+                {formatNumber(influencer.followers_count)}
+              </p>
+              <p className="text-sm text-gray-600">팔로워</p>
+            </div>
+            
+            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-2xl border border-green-200">
+              <TrendingUp className="h-8 w-8 text-green-600 mb-2" />
+              <p className="text-2xl font-bold text-gray-900">
+                {influencer.engagement_rate}%
+              </p>
+              <p className="text-sm text-gray-600">참여율</p>
+            </div>
+            
+            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-2xl border border-pink-200">
+              <Heart className="h-8 w-8 text-pink-600 mb-2" />
+              <p className="text-2xl font-bold text-gray-900">
+                {formatNumber(averageLikes)}
+              </p>
+              <p className="text-sm text-gray-600">평균 좋아요</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 상세 통계 카드 - 데스크톱용 (도달범위 제거) */}
-      <div className="hidden sm:block container mx-auto px-4 py-6">
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(influencer.followers_count)}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">팔로워</p>
+        {/* 통계 카드 - 데스크톱 */}
+        <div className="hidden sm:block container mx-auto px-4 py-6">
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatNumber(influencer.followers_count)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">팔로워</p>
+                  </div>
+                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {influencer.engagement_rate}%
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">참여율</p>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {influencer.engagement_rate}%
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">참여율</p>
+                  </div>
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatNumber(influencer.average_likes || 0)}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">평균 좋아요</p>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatNumber(averageLikes)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">평균 좋아요</p>
+                  </div>
+                  <div className="h-12 w-12 bg-pink-100 rounded-full flex items-center justify-center">
+                    <Heart className="h-6 w-6 text-pink-600" />
+                  </div>
                 </div>
-                <div className="h-12 w-12 bg-pink-100 rounded-full flex items-center justify-center">
-                  <Heart className="h-6 w-6 text-pink-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* 상세 통계 - 모바일용 스크롤 가능한 카드 (도달범위 제거) */}
-      <div className="sm:hidden px-4 py-6">
-        <h3 className="font-semibold text-gray-900 mb-4">성과 지표</h3>
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-2xl border border-blue-200">
-            <Users className="h-8 w-8 text-blue-600 mb-2" />
-            <p className="text-2xl font-bold text-gray-900">
-              {formatNumber(influencer.followers_count)}
-            </p>
-            <p className="text-sm text-gray-600">팔로워</p>
-          </div>
-          
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-2xl border border-green-200">
-            <TrendingUp className="h-8 w-8 text-green-600 mb-2" />
-            <p className="text-2xl font-bold text-gray-900">
-              {influencer.engagement_rate}%
-            </p>
-            <p className="text-sm text-gray-600">참여율</p>
-          </div>
-          
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-2xl border border-pink-200">
-            <Heart className="h-8 w-8 text-pink-600 mb-2" />
-            <p className="text-2xl font-bold text-gray-900">
-              {formatNumber(influencer.average_likes || 0)}
-            </p>
-            <p className="text-sm text-gray-600">평균 좋아요</p>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </div>
 
-      {/* 포트폴리오 갤러리 - 포트폴리오가 있을 때만 표시 */}
-      {influencer.portfolio_urls && influencer.portfolio_urls.length > 0 && (
+        {/* 포트폴리오 섹션 */}
+        {influencer.portfolio_urls && influencer.portfolio_urls.length > 0 && (
+          <div className="container mx-auto px-4 py-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>포트폴리오</span>
+                  <Badge variant="outline">{influencer.portfolio_urls.length}개</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {influencer.portfolio_urls.map((url, index) => (
+                    <div
+                      key={index}
+                      className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setSelectedImage(url)}
+                    >
+                      <img
+                        src={url}
+                        alt={`Portfolio ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 추가 정보 섹션 */}
         <div className="container mx-auto px-4 py-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                <Camera className="h-5 w-5" />
-                포트폴리오
-              </CardTitle>
+              <CardTitle>활동 정보</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-                {influencer.portfolio_urls.map((url, index) => (
-                  <div 
-                    key={index}
-                    className="aspect-square rounded-lg sm:rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity shadow-md hover:shadow-xl"
-                    onClick={() => setSelectedImage(url)}
-                  >
-                    <img 
-                      src={url} 
-                      alt={`포트폴리오 ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+              <div className="space-y-3">
+                {influencer.created_at && (
+                  <div className="flex items-center justify-between py-2 border-b">
+                    <span className="text-sm text-gray-600">가입일</span>
+                    <span className="text-sm font-medium">
+                      {new Date(influencer.created_at).toLocaleDateString('ko-KR')}
+                    </span>
                   </div>
-                ))}
+                )}
+                {influencer.updated_at && (
+                  <div className="flex items-center justify-between py-2 border-b">
+                    <span className="text-sm text-gray-600">마지막 업데이트</span>
+                    <span className="text-sm font-medium">
+                      {new Date(influencer.updated_at).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-gray-600">인증 상태</span>
+                  <span className="text-sm font-medium">
+                    {influencer.is_verified ? (
+                      <Badge className="bg-blue-100 text-blue-700">인증됨</Badge>
+                    ) : (
+                      <Badge variant="outline">미인증</Badge>
+                    )}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
-      )}
 
-      {/* 하단 여백 */}
-      <div className="h-20"></div>
+        {/* 문의하기 섹션 - 데스크톱 */}
+        <div className="hidden sm:block container mx-auto px-4 pb-8">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2">이 인플루언서와 협업하고 싶으신가요?</h3>
+              <p className="text-gray-600 mb-4">지금 바로 문의해보세요</p>
+              <Button 
+                size="lg" 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => alert('문의 기능은 준비 중입니다')}
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                문의하기
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* 문의하기 버튼 - 모바일 하단 고정 */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-30">
+        <Button 
+          size="lg" 
+          className="w-full bg-green-600 hover:bg-green-700"
+          onClick={() => alert('문의 기능은 준비 중입니다')}
+        >
+          <MessageCircle className="h-5 w-5 mr-2" />
+          문의하기
+        </Button>
+      </div>
 
       {/* 이미지 모달 */}
       {selectedImage && (
         <div 
-          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
-          <img 
-            src={selectedImage} 
-            alt="포트폴리오 확대"
-            className="max-w-full max-h-full object-contain"
-          />
-          <button 
-            className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors"
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300"
             onClick={() => setSelectedImage(null)}
           >
-            <X className="h-6 w-6" />
+            <X className="h-8 w-8" />
           </button>
+          <img
+            src={selectedImage}
+            alt="Portfolio"
+            className="max-w-full max-h-full object-contain"
+          />
         </div>
       )}
     </div>
