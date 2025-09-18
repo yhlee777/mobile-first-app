@@ -325,118 +325,107 @@ export default function AdvertiserDashboard() {
         )}
       </div>
 
-      {/* 인플루언서 목록 */}
-      <main className="px-3 sm:px-4 py-4 sm:py-6">
-        {filteredInfluencers.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {filteredInfluencers.map((influencer) => (
-              <Card key={influencer.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-                <CardContent className="p-0 flex flex-col h-full">
-                  {/* 프로필 이미지 영역 */}
-                  <Link href={`/advertiser/influencer/${influencer.id}`}>
-                    <div className="relative aspect-square">
-                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center cursor-pointer">
-                        {influencer.profile_image ? (
-                          <img 
-                            src={influencer.profile_image} 
-                            alt={influencer.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
-                        )}
-                      </div>
-                      
-                      {/* 좋아요 버튼 - 우측 상단 */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-20"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleFavorite(influencer.id)
-                        }}
-                      >
-                        <Heart 
-                          className={`h-4 w-4 ${
-                            favoriteIds.includes(influencer.id) 
-                              ? 'fill-red-500 text-red-500' 
-                              : 'text-gray-600'
-                          }`} 
-                        />
-                      </Button>
+{/* 인플루언서 목록 */}
+<main className="px-3 sm:px-4 py-4 sm:py-6">
+  {filteredInfluencers.length > 0 ? (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+      {filteredInfluencers.map((influencer) => (
+        <Card 
+          key={influencer.id} 
+          className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+          onClick={() => router.push(`/advertiser/influencer/${influencer.id}`)}
+        >
+          <CardContent className="p-0 flex flex-col h-full">
+            {/* 이미지 영역 - 고정 */}
+            <div className="relative">
+              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                {influencer.profile_image ? (
+                  <img 
+                    src={influencer.profile_image} 
+                    alt={influencer.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
+                )}
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFavorite(influencer.id)
+                }}
+              >
+                <Heart 
+                  className={`h-4 w-4 ${
+                    favoriteIds.includes(influencer.id) 
+                      ? 'fill-red-500 text-red-500' 
+                      : 'text-gray-600'
+                  }`} 
+                />
+              </Button>
 
-                      {/* 카테고리 태그 - 좌측 하단 */}
-                      <div className="absolute bottom-2 left-2 z-10">
-                        <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
-                          {influencer.category || '미정'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Link>
+              <div className="absolute bottom-2 left-2 z-10">
+                <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
+                  {influencer.category || '미정'}
+                </Badge>
+              </div>
+            </div>
 
-                  {/* 인플루언서 정보 영역 */}
-                  <div className="p-3 flex flex-col flex-1">
-                    <div className="space-y-2 flex-1">
-                      {/* 이름과 인증 배지 */}
-                      <div className="flex items-center gap-1">
-                        <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">
-                          {influencer.name || '이름 미설정'}
-                        </h3>
-                        {influencer.is_verified && (
-                          <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        )}
-                      </div>
+            {/* 정보 영역 - 고정 높이들 */}
+            <div className="p-3 flex flex-col flex-1">
+              {/* 이름 영역 - 고정 높이 */}
+              <div className="h-6 flex items-center gap-1 mb-1">
+                <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">
+                  {influencer.name || '이름 미설정'}
+                </h3>
+                {influencer.is_verified && (
+                  <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                )}
+              </div>
 
-                      {/* 인스타그램 핸들 */}
-                      <div className="text-xs text-gray-500">
-                        @{influencer.instagram_handle}
-                      </div>
+              {/* 인스타 아이디 영역 - 고정 높이 */}
+              <div className="h-5 flex items-center mb-1">
+                <span className="text-xs text-gray-500 truncate">
+                  @{influencer.instagram_handle}
+                </span>
+              </div>
 
-                      {/* 위치 */}
-                      {influencer.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                          <span className="text-xs text-gray-500 truncate">{influencer.location}</span>
-                        </div>
-                      )}
+              {/* 위치 영역 - 고정 높이 */}
+              <div className="h-5 flex items-center gap-1 mb-2">
+                {influencer.location ? (
+                  <>
+                    <MapPin className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-500 truncate">{influencer.location}</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-transparent">-</span>
+                )}
+              </div>
 
-                      {/* 팔로워 수와 참여율 */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs text-gray-500">팔로워</span>
-                          <div className="font-semibold text-gray-900 text-sm">
-                            {formatFollowers(influencer.followers_count)}
-                          </div>
-                        </div>
-                        {influencer.engagement_rate && (
-                          <div className="text-right">
-                            <span className="text-xs text-gray-500">참여율</span>
-                            <div className="font-semibold text-gray-900 text-sm">
-                              {influencer.engagement_rate}%
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 자세히 보기 버튼 - 항상 하단 고정 */}
-                    <Link href={`/advertiser/influencer/${influencer.id}`} className="mt-3">
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        className="w-full h-10 text-sm bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150"
-                      >
-                        자세히 보기
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </Link>
+              {/* 팔로워/참여율 영역 - 고정 높이 */}
+              <div className="h-10 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-gray-500">팔로워</span>
+                  <div className="font-semibold text-gray-900 text-sm">
+                    {formatFollowers(influencer.followers_count)}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-gray-500">참여율</span>
+                  <div className="font-semibold text-gray-900 text-sm">
+                    {influencer.engagement_rate || 0}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
         ) : (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
