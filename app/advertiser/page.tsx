@@ -489,11 +489,11 @@ export default function AdvertiserPage() {
             {sortedInfluencers.map((influencer, index) => (
               <Card 
                 key={influencer.id} 
-                className="group hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden hover:-translate-y-1 animate-fade-in"
+                className="group hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden hover:-translate-y-1 animate-fade-in flex flex-col"
                 style={{ animationDelay: `${index * 50}ms` }}
                 onClick={() => router.push(`/advertiser/influencer/${influencer.id}`)}
               >
-                {/* 커버 이미지 영역 - 향상된 호버 효과 */}
+                {/* 커버 이미지 영역 */}
                 <div className="relative aspect-[4/3] sm:aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                   <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
                     {!imageLoadErrors.has(influencer.id) && (influencer.cover_image || influencer.portfolio_urls?.[0]) ? (
@@ -529,17 +529,10 @@ export default function AdvertiserPage() {
                       }`}
                     />
                   </button>
-                  
-                  {/* 라이브 배지 */}
-                  {influencer.is_active && (
-                    <div className="absolute top-2 left-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center gap-1 animate-pulse">
-                      <div className="w-2 h-2 bg-white rounded-full animate-ping" />
-                      LIVE
-                    </div>
-                  )}
                 </div>
                 
-                <CardContent className="p-3 sm:p-4">
+                {/* CardContent를 flex-1로 만들어서 남은 공간 차지 */}
+                <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
                   <div className="flex items-start gap-2 sm:gap-3">
                     {/* 프로필 이미지 - 호버 효과 추가 */}
                     <div className="relative group/avatar">
@@ -557,7 +550,9 @@ export default function AdvertiserPage() {
                         </div>
                       )}
                       {/* 온라인 인디케이터 */}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                      {influencer.is_active && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm sm:text-base truncate flex items-center gap-1 group-hover:text-green-600 transition-colors">
@@ -585,15 +580,15 @@ export default function AdvertiserPage() {
                     </Badge>
                   )}
                   
-                  {/* 소개 텍스트 - 툴팁 추가 */}
+                  {/* 소개 텍스트 - 높이 줄임 */}
                   {influencer.bio && (
-                    <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-1 sm:line-clamp-2 hover:line-clamp-none transition-all" title={influencer.bio}>
+                    <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-2" title={influencer.bio}>
                       {influencer.bio}
                     </p>
                   )}
                   
-                  {/* 통계 - 애니메이션 추가 */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3">
+                  {/* 통계 - 소개 텍스트 바로 아래에 위치 (margin 줄임) */}
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-2 mb-3">
                     <div className="group/stat cursor-pointer">
                       <p className="text-[10px] sm:text-xs text-gray-500 group-hover/stat:text-green-600 transition-colors">
                         팔로워
@@ -612,15 +607,17 @@ export default function AdvertiserPage() {
                     </div>
                   </div>
 
-                  <Link href={`/advertiser/influencer/${influencer.id}`}>
-                    <Button 
-                      className="w-full mt-3 text-xs sm:text-sm h-8 sm:h-10 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:shadow-lg" 
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                      프로필 상세보기
-                    </Button>
-                  </Link>
+                  {/* 버튼만 mt-auto로 하단 정렬 */}
+                  <Button 
+                    className="w-full mt-auto text-xs sm:text-sm h-8 sm:h-10 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:shadow-lg flex items-center justify-center" 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/advertiser/influencer/${influencer.id}`)
+                    }}
+                  >
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 flex-shrink-0" />
+                    <span>상세보기</span>
+                  </Button>
                 </CardContent>
               </Card>
             ))}
