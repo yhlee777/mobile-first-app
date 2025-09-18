@@ -136,18 +136,16 @@ const getMockInfluencers = (): Influencer[] => [
 
 const categories = ['전체', '패션', '뷰티', '라이프스타일', '여행', '음식', '피트니스', '일상', '셀럽']
 const locations = ['전체', '서울', '경기', '부산', '대구', '인천', '광주', '대전']
-const minFollowerOptions = [
+const followerTierOptions = [
   { value: 'all', label: '전체' },
-  { value: '10000', label: '1만+' },
-  { value: '50000', label: '5만+' },
-  { value: '100000', label: '10만+' },
-  { value: '500000', label: '50만+' }
+  { value: 'nano', label: '나노 (1K-10K)' },
+  { value: 'micro', label: '마이크로 (10K-100K)' },
+  { value: 'macro', label: '매크로 (100K-1M)' },
+  { value: 'mega', label: '메가 (1M+)' }
 ]
 const sortOptions = [
-  { value: 'followers_desc', label: '팔로워 많은순' },
-  { value: 'followers_asc', label: '팔로워 적은순' },
-  { value: 'engagement_desc', label: '참여율 높은순' },
-  { value: 'engagement_asc', label: '참여율 낮은순' }
+  { value: 'followers', label: '팔로워순' },
+  { value: 'engagement', label: '참여율순' }
 ]
 
 export default function AdvertiserPage() {
@@ -156,8 +154,8 @@ export default function AdvertiserPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('전체')
   const [locationFilter, setLocationFilter] = useState('전체')
-  const [minFollowers, setMinFollowers] = useState('all')
-  const [sortBy, setSortBy] = useState('followers_desc')
+  const [followerTier, setFollowerTier] = useState('all')
+  const [sortBy, setSortBy] = useState('followers')
   const [showFilters, setShowFilters] = useState(false)
   const [likedInfluencers, setLikedInfluencers] = useState<Set<string>>(new Set())
   const [useMockData] = useState(true)
@@ -195,18 +193,30 @@ export default function AdvertiserPage() {
     setLoading(false)
   }
 
+  const filterByTier = (count: number, tier: string): boolean => {
+    switch (tier) {
+      case 'nano':
+        return count >= 1000 && count < 10000
+      case 'micro':
+        return count >= 10000 && count < 100000
+      case 'macro':
+        return count >= 100000 && count < 1000000
+      case 'mega':
+        return count >= 1000000
+      case 'all':
+      default:
+        return true
+    }
+  }
+
   const sortInfluencers = (influencers: Influencer[]) => {
     const sorted = [...influencers]
     
     switch (sortBy) {
-      case 'followers_desc':
+      case 'followers':
         return sorted.sort((a, b) => b.followers_count - a.followers_count)
-      case 'followers_asc':
-        return sorted.sort((a, b) => a.followers_count - b.followers_count)
-      case 'engagement_desc':
+      case 'engagement':
         return sorted.sort((a, b) => b.engagement_rate - a.engagement_rate)
-      case 'engagement_asc':
-        return sorted.sort((a, b) => a.engagement_rate - b.engagement_rate)
       default:
         return sorted
     }
@@ -218,9 +228,9 @@ export default function AdvertiserPage() {
                             inf.instagram_handle.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = categoryFilter === '전체' || inf.category === categoryFilter
       const matchesLocation = locationFilter === '전체' || inf.location === locationFilter
-      const matchesMinFollowers = minFollowers === 'all' || inf.followers_count >= parseInt(minFollowers)
+      const matchesTier = filterByTier(inf.followers_count, followerTier)
       
-      return matchesSearch && matchesCategory && matchesLocation && matchesMinFollowers
+      return matchesSearch && matchesCategory && matchesLocation && matchesTier
     })
   )
 
@@ -338,14 +348,14 @@ export default function AdvertiserPage() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs mb-1 block">최소팔로워</Label>
-                <Select value={minFollowers} onValueChange={setMinFollowers}>
+                <Label className="text-xs mb-1 block">팔로워 범위</Label>
+                <Select value={followerTier} onValueChange={setFollowerTier}>
                   <SelectTrigger className="w-full h-10 text-sm border-gray-300">
-                    <SelectValue placeholder="팔로워 수" />
+                    <SelectValue placeholder="팔로워 범위" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {minFollowerOptions.map(option => (
+                      {followerTierOptions.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -378,8 +388,8 @@ export default function AdvertiserPage() {
                 size="sm"
                 onClick={() => {
                   setLocationFilter('전체')
-                  setMinFollowers('all')
-                  setSortBy('followers_desc')
+                  setFollowerTier('all')
+                  setSortBy('followers')
                 }}
               >
                 초기화
