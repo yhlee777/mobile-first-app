@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
-  
   Select,
   SelectContent,
   SelectGroup,
@@ -191,55 +190,7 @@ export default function AdvertiserDashboard() {
     return count.toString()
   }
 
-  // 정렬/필터링된 인플루언서 목록
-  const filteredInfluencers = influencers.filter(influencer => {
-    // 찜한목록 필터
-    if (sortBy === '찜한목록' && !favoriteIds.includes(influencer.id)) {
-      return false
-    }
-
-    const matchesSearch = influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         influencer.instagram_handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         influencer.bio.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesCategory = categoryFilter === '전체' || influencer.category === categoryFilter
-    
-    const matchesLocation = locationFilter === '전체' || influencer.location === locationFilter
-    
-    let matchesFollowerTier = true
-    if (followerTier !== '전체') {
-      const count = influencer.followers_count
-      switch (followerTier) {
-        case '1만-5만':
-          matchesFollowerTier = count >= 10000 && count < 50000
-          break
-        case '5만-10만':
-          matchesFollowerTier = count >= 50000 && count < 100000
-          break
-        case '10만-50만':
-          matchesFollowerTier = count >= 100000 && count < 500000
-          break
-        case '50만+':
-          matchesFollowerTier = count >= 500000
-          break
-      }
-    }
-    
-    return matchesSearch && matchesCategory && matchesFollowerTier && matchesLocation
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case '참여율순':
-        return b.engagement_rate - a.engagement_rate
-      case '최신순':
-        return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-      case '찜한목록':
-        // 찜한목록에서는 팔로워순으로 정렬
-        return b.followers_count - a.followers_count
-      default: // 팔로워순
-        return b.followers_count - a.followers_count
-    }
-  })
-
+  // 찜하기 토글
   const toggleFavorite = (id: string) => {
     setFavoriteIds(prev => 
       prev.includes(id) 
@@ -248,102 +199,132 @@ export default function AdvertiserDashboard() {
     )
   }
 
+  // 정렬/필터링된 인플루언서 목록
+  const filteredInfluencers = influencers.filter(influencer => {
+    // 찜한목록 필터
+    if (sortBy === '찜한목록' && !favoriteIds.includes(influencer.id)) {
+      return false
+    }
+
+    const matchesSearch = influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         influencer.instagram_handle.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesCategory = categoryFilter === '전체' || influencer.category === categoryFilter
+    
+    const matchesLocation = locationFilter === '전체' || influencer.location === locationFilter
+    
+    const matchesFollowerTier = (() => {
+      if (followerTier === '전체') return true
+      const count = influencer.followers_count
+      switch (followerTier) {
+        case '1만-5만': return count >= 10000 && count < 50000
+        case '5만-10만': return count >= 50000 && count < 100000
+        case '10만-50만': return count >= 100000 && count < 500000
+        case '50만+': return count >= 500000
+        default: return true
+      }
+    })()
+    
+    return matchesSearch && matchesCategory && matchesLocation && matchesFollowerTier
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case '팔로워순':
+        return b.followers_count - a.followers_count
+      case '참여율순':
+        return b.engagement_rate - a.engagement_rate
+      case '최신순':
+        return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+      default:
+        return 0
+    }
+  })
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="px-3 sm:px-4 py-3 sm:py-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
+      {/* 상단 헤더 */}
+      <header className="bg-white border-b sticky top-0 z-40">
+        <div className="px-3 sm:px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* 좌측상단에 잇다 브랜드 로고 텍스트 */}
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold brand-primary-text">잇다</h1>
-              <div className="hidden sm:block w-px h-6 bg-gray-300"></div>
-              <span className="text-base sm:text-lg font-semibold text-gray-700 hidden sm:block">파트너 찾기</span>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">광고주 대시보드</h1>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">인플루언서를 찾아보세요</p>
             </div>
-            
-            {/* 우측 아이콘들 */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="w-8 h-8 sm:w-10 sm:h-10"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* 검색창 */}
-      <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b border-gray-100">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="인플루언서 검색..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-10 sm:h-11 bg-gray-50 border-gray-200 rounded-lg text-sm sm:text-base"
-          />
-        </div>
-      </div>
-
-      {/* 정렬 및 필터 버튼들 */}
-      <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 border-b border-gray-100">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          {/* 필터 아이콘 */}
+      {/* 검색 및 필터 섹션 */}
+      <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b">
+        {/* 검색바와 필터 토글 */}
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="인플루언서 검색..."
+              className="pl-9 h-9 sm:h-10 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
+            className="h-9 sm:h-10 px-3"
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex-shrink-0 h-8 px-2 sm:px-3 ${showFilters ? 'bg-gray-200' : ''}`}
           >
-            <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+            <Filter className="h-4 w-4" />
+            <span className="ml-1 hidden sm:inline">필터</span>
           </Button>
+        </div>
 
-          {/* 정렬 및 찜한목록 버튼들 */}
+        {/* 정렬 및 찜한목록 버튼 */}
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
           {(['팔로워순', '참여율순', '최신순', '찜한목록'] as SortType[]).map((sort) => (
             <Button
               key={sort}
-              variant={sortBy === sort ? 'default' : 'outline'}
+              variant={sortBy === sort ? "default" : "outline"}
               size="sm"
               onClick={() => setSortBy(sort)}
-              className={`flex-shrink-0 h-8 px-2 sm:px-3 text-xs sm:text-sm transition-all ${
-                sortBy === sort
-                  ? 'brand-primary brand-primary-hover text-white'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+              className={`h-8 text-xs whitespace-nowrap flex-shrink-0 ${
+                sortBy === sort ? 'brand-primary brand-primary-hover text-white' : ''
               }`}
             >
-              {sort === '참여율순' && <TrendingUp className="h-3 w-3 mr-1" />}
-              {sort === '최신순' && <Clock className="h-3 w-3 mr-1" />}
               {sort === '찜한목록' && <Heart className="h-3 w-3 mr-1" />}
-              <span>{sort}</span>
+              {sort}
             </Button>
           ))}
         </div>
 
-        {/* 확장된 필터 옵션들 */}
+        {/* 확장 필터 */}
         {showFilters && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 pt-3 mt-3 border-t">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
             <div>
-              <Label className="text-xs text-gray-600">카테고리</Label>
+              <Label className="text-xs text-gray-500 mb-1 block">카테고리</Label>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-8 sm:h-9 mt-1 text-xs sm:text-sm">
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
-              <Label className="text-xs text-gray-600">팔로워</Label>
+              <Label className="text-xs text-gray-500 mb-1 block">팔로워</Label>
               <Select value={followerTier} onValueChange={setFollowerTier}>
-                <SelectTrigger className="h-8 sm:h-9 mt-1 text-xs sm:text-sm">
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -355,9 +336,9 @@ export default function AdvertiserDashboard() {
             </div>
 
             <div>
-              <Label className="text-xs text-gray-600">지역</Label>
+              <Label className="text-xs text-gray-500 mb-1 block">지역</Label>
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="h-8 sm:h-9 mt-1 text-xs sm:text-sm">
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -393,8 +374,6 @@ export default function AdvertiserDashboard() {
       <main className="px-3 sm:px-4 py-4 sm:py-6">
         {filteredInfluencers.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            // ... (이전 코드 동일)
-
             {filteredInfluencers.map((influencer) => (
               <Card key={influencer.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
@@ -486,8 +465,6 @@ export default function AdvertiserDashboard() {
                 </CardContent>
               </Card>
             ))}
-
-// ... (나머지 코드 동일)
           </div>
         ) : (
           <div className="text-center py-12">
@@ -500,25 +477,10 @@ export default function AdvertiserDashboard() {
             </p>
             <p className="text-sm text-gray-400 mb-4">
               {sortBy === '찜한목록' 
-                ? '하트 아이콘을 눌러 인플루언서를 찜해보세요' 
-                : '다른 검색어나 필터를 시도해보세요'
+                ? '하트를 눌러 관심있는 인플루언서를 저장하세요' 
+                : '다른 검색 조건을 시도해보세요'
               }
             </p>
-            {sortBy !== '찜한목록' && (
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => {
-                  setSearchTerm('')
-                  setCategoryFilter('전체')
-                  setFollowerTier('전체')
-                  setLocationFilter('전체')
-                  setSortBy('팔로워순')
-                }}
-              >
-                필터 초기화
-              </Button>
-            )}
           </div>
         )}
       </main>
