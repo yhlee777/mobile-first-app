@@ -10,11 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft,
-  Mail,
-  Users,
-  Building,
   Loader2,
-  Lock
 } from 'lucide-react'
 
 export default function LoginPage() {
@@ -127,15 +123,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email">이메일</Label>
-                <div className="mt-1 relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <div className="mt-1">
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="이메일을 입력하세요"
-                    className="pl-10 h-11 sm:h-12 text-base"
+                    className="h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="email"
                   />
@@ -144,15 +139,14 @@ export default function LoginPage() {
 
               <div>
                 <Label htmlFor="password">비밀번호</Label>
-                <div className="mt-1 relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <div className="mt-1">
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
-                    className="pl-10 h-11 sm:h-12 text-base"
+                    className="h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="current-password"
                   />
@@ -196,48 +190,38 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">계정이 없으신가요?</span>
-                </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
               </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <Link href="/influencer/signup">
-                  <Button 
-                    variant="outline" 
-                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text h-10 text-sm"
-                    disabled={loading}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    인플루언서 가입
-                  </Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button 
-                    variant="outline" 
-                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text h-10 text-sm"
-                    disabled={loading}
-                  >
-                    <Building className="h-4 w-4 mr-2" />
-                    광고주 가입
-                  </Button>
-                </Link>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">또는</span>
               </div>
             </div>
 
-            {/* 디버그 정보 */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-6 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs font-semibold text-gray-600 mb-2">🔧 개발자 정보:</p>
-                <p className="text-xs text-gray-500">테스트 계정을 생성하여 테스트해보세요</p>
-                <p className="text-xs text-gray-500 mt-1">로그인 후 DB에서 사용자 유형을 확인하여 적절한 페이지로 이동합니다</p>
-              </div>
-            )}
+            <div className="space-y-3">
+              <Link href="/influencer/signup" passHref>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-11 sm:h-12 text-base border-2 hover:bg-green-50 hover:border-green-600 hover:text-green-600 transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    인플루언서로 시작하기
+                  </span>
+                </Button>
+              </Link>
+              
+              <Link href="/auth/signup" passHref>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-11 sm:h-12 text-base border-2 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    광고주로 시작하기
+                  </span>
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
