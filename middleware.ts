@@ -1,15 +1,28 @@
-// 프로젝트 루트에 위치
-// Next.js가 이 파일을 찾아서 실행함
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'  // 헬퍼 함수 import
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  // lib/supabase/middleware.ts의 updateSession 함수 호출
-  return await updateSession(request)
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient({ req, res })
+  
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // /advertiser 경로 명시적 허용
+  if (req.nextUrl.pathname === '/advertiser' && session) {
+    return res
+  }
+  
+  // /influencer/* 경로 명시적 허용  
+  if (req.nextUrl.pathname.startsWith('/influencer/') && session) {
+    return res
+  }
+  
+  return res
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ]
 }

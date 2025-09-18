@@ -40,6 +40,7 @@ export default function AdvertiserSignupPage() {
       const supabase = createClient()
       
       // 1. Auth 회원가입
+      console.log('Starting signup with email:', email)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -53,13 +54,20 @@ export default function AdvertiserSignupPage() {
       
       if (authError) {
         console.error('Auth error:', authError)
-        throw new Error(authError.message)
+        if (authError.message.includes('already registered')) {
+          setError('이미 등록된 이메일입니다.')
+        } else {
+          setError(authError.message)
+        }
+        return
       }
       
       if (!authData.user) {
         throw new Error('회원가입에 실패했습니다.')
       }
 
+      console.log('Auth successful, user ID:', authData.user.id)
+      
       // 2. users 테이블에 기본 정보 삽입
       const { error: userError } = await supabase
         .from('users')
@@ -75,18 +83,22 @@ export default function AdvertiserSignupPage() {
         console.error('User table error:', userError)
       }
       
-      // 3. 자동 로그인
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      console.log('Signup completed successfully')
+      
+      // 3. 자동 로그인 시도
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       })
       
-      if (signInError) {
-        console.error('Auto sign-in error:', signInError)
+      if (signInData?.user) {
+        // 로그인 성공 - 광고주 페이지로 이동
+        router.push('/advertiser')
+      } else {
+        // 로그인 실패 - 로그인 페이지로 이동
+        console.log('Auto sign-in failed:', signInError)
+        router.push('/login')
       }
-      
-      // 성공 시 광고주 대시보드로 이동
-      router.push('/advertiser/dashboard')
       
     } catch (error: any) {
       console.error('Signup error:', error)
@@ -113,13 +125,13 @@ export default function AdvertiserSignupPage() {
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="company">회사명</Label>
+              <Label htmlFor="companyName">회사명</Label>
               <div className="relative">
                 <Building className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <Input
-                  id="company"
+                  id="companyName"
                   type="text"
-                  placeholder="회사명"
+                  placeholder="회사명 입력"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="pl-10"
@@ -142,6 +154,9 @@ export default function AdvertiserSignupPage() {
                   required
                 />
               </div>
+              <p className="text-xs text-gray-500">
+                * 실제 이메일 주소를 입력해주세요
+              </p>
             </div>
             
             <div className="space-y-2">
@@ -158,8 +173,9 @@ export default function AdvertiserSignupPage() {
                   required
                 />
               </div>
+              <p className="text-xs text-gray-500">* 최소 6자 이상</p>
             </div>
-
+            
             <div className="space-y-2">
               <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
               <div className="relative">
@@ -175,23 +191,23 @@ export default function AdvertiserSignupPage() {
                 />
               </div>
             </div>
-
+            
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <span>{error}</span>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
-
+            
             <Button
               type="submit"
+              disabled={loading || !email || !password || !companyName}
               className="w-full bg-green-600 hover:bg-green-700"
-              disabled={loading}
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  처리 중...
+                  가입 중...
                 </>
               ) : (
                 '회원가입'
@@ -199,13 +215,18 @@ export default function AdvertiserSignupPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link 
-              href="/auth/login" 
-              className="inline-block px-4 py-2 text-sm text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              이미 계정이 있으신가요? <span className="font-medium">로그인</span>
-            </Link>
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-sm text-gray-600">
+              이미 계정이 있으신가요?{' '}
+              <Link href="/login" className="text-green-600 hover:text-green-700 font-medium">
+                로그인
+              </Link>
+            </p>
+            <p className="text-sm text-gray-500">
+              <Link href="/influencer/signup" className="hover:text-gray-700">
+                인플루언서로 가입하기
+              </Link>
+            </p>
           </div>
         </CardContent>
       </Card>

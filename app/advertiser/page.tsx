@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -23,7 +24,11 @@ import {
   Heart, 
   LogOut,
   Eye,
-  CheckCircle
+  CheckCircle,
+  Instagram,
+  MapPin,
+  Users,
+  RefreshCw
 } from 'lucide-react'
 
 interface Influencer {
@@ -32,110 +37,15 @@ interface Influencer {
   name: string
   bio: string
   category: string
-  location?: string
   followers_count: number
   engagement_rate: number
-  profile_picture_url?: string
-  is_verified?: boolean
-  media_urls?: string[]
+  profile_image?: string
+  cover_image?: string
+  portfolio_urls?: string[]
+  is_active?: boolean
 }
 
-const getMockInfluencers = (): Influencer[] => [
-  {
-    id: '1',
-    name: '방방뷔',
-    instagram_handle: 'bangbangvui',
-    bio: '서울시 성동구 | 26대 여성',
-    category: '일상',
-    location: '서울',
-    followers_count: 20000,
-    engagement_rate: 4.2,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: true,
-    media_urls: ['/api/placeholder/200/200']
-  },
-  {
-    id: '2', 
-    name: '아이유 (IU)',
-    instagram_handle: 'dlwlrma',
-    bio: '서울',
-    category: '셀럽',
-    location: '서울',
-    followers_count: 32000000,
-    engagement_rate: 8.5,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: false,
-    media_urls: []
-  },
-  {
-    id: '3',
-    name: '제시카 (Jessica)',
-    instagram_handle: 'jessica.syj',
-    bio: '서울',
-    category: '패션',
-    location: '서울',
-    followers_count: 11934011,
-    engagement_rate: 5.2,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: false,
-    media_urls: []
-  },
-  {
-    id: '4',
-    name: '포니 (PONY)',
-    instagram_handle: 'ponysmakeup',
-    bio: '서울',
-    category: '뷰티',
-    location: '서울',
-    followers_count: 8746801,
-    engagement_rate: 6.8,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: false,
-    media_urls: []
-  },
-  {
-    id: '5',
-    name: '오늘의집',
-    instagram_handle: 'todayhouse',
-    bio: '서울',
-    category: '라이프스타일',
-    location: '서울',
-    followers_count: 1311961,
-    engagement_rate: 3.9,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: true,
-    media_urls: []
-  },
-  {
-    id: '6',
-    name: '리사베',
-    instagram_handle: 'risabae',
-    bio: '서울',
-    category: '뷰티',
-    location: '서울',
-    followers_count: 1303371,
-    engagement_rate: 4.7,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: false,
-    media_urls: []
-  },
-  {
-    id: '7',
-    name: '심으뜸',
-    instagram_handle: 'simeuttem',
-    bio: '서울',
-    category: '라이프스타일',
-    location: '서울',
-    followers_count: 831538,
-    engagement_rate: 5.5,
-    profile_picture_url: '/api/placeholder/80/80',
-    is_verified: false,
-    media_urls: []
-  }
-]
-
-const categories = ['전체', '패션', '뷰티', '라이프스타일', '여행', '음식', '피트니스', '일상', '셀럽']
-const locations = ['전체', '서울', '경기', '부산', '대구', '인천', '광주', '대전']
+const categories = ['전체', '패션', '뷰티', '라이프스타일', '여행', '음식', '피트니스', '테크', '육아', '기타']
 const followerTierOptions = [
   { value: 'all', label: '전체' },
   { value: 'nano', label: '나노 (1K-10K)' },
@@ -145,7 +55,8 @@ const followerTierOptions = [
 ]
 const sortOptions = [
   { value: 'followers', label: '팔로워순' },
-  { value: 'engagement', label: '참여율순' }
+  { value: 'engagement', label: '참여율순' },
+  { value: 'recent', label: '최신순' }
 ]
 
 export default function AdvertiserPage() {
@@ -153,12 +64,11 @@ export default function AdvertiserPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('전체')
-  const [locationFilter, setLocationFilter] = useState('전체')
   const [followerTier, setFollowerTier] = useState('all')
   const [sortBy, setSortBy] = useState('followers')
   const [showFilters, setShowFilters] = useState(false)
   const [likedInfluencers, setLikedInfluencers] = useState<Set<string>>(new Set())
-  const [useMockData] = useState(true)
+  const [useMockData, setUseMockData] = useState(false) // 목 데이터 사용 여부
   const router = useRouter()
   const supabase = createClient()
 
@@ -170,339 +80,353 @@ export default function AdvertiserPage() {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
-      router.push('/auth/login')
+      router.push('/login')
     }
   }
 
   const fetchInfluencers = async () => {
     setLoading(true)
-    if (useMockData) {
-      setInfluencers(getMockInfluencers())
-      setLoading(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('influencers')
-      .select('*')
-      .order('followers_count', { ascending: false })
-
-    if (!error && data) {
-      setInfluencers(data)
-    }
-    setLoading(false)
-  }
-
-  const filterByTier = (count: number, tier: string): boolean => {
-    switch (tier) {
-      case 'nano':
-        return count >= 1000 && count < 10000
-      case 'micro':
-        return count >= 10000 && count < 100000
-      case 'macro':
-        return count >= 100000 && count < 1000000
-      case 'mega':
-        return count >= 1000000
-      case 'all':
-      default:
-        return true
-    }
-  }
-
-  const sortInfluencers = (influencers: Influencer[]) => {
-    const sorted = [...influencers]
-    
-    switch (sortBy) {
-      case 'followers':
-        return sorted.sort((a, b) => b.followers_count - a.followers_count)
-      case 'engagement':
-        return sorted.sort((a, b) => b.engagement_rate - a.engagement_rate)
-      default:
-        return sorted
-    }
-  }
-
-  const filteredInfluencers = sortInfluencers(
-    influencers.filter(inf => {
-      const matchesSearch = inf.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            inf.instagram_handle.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesCategory = categoryFilter === '전체' || inf.category === categoryFilter
-      const matchesLocation = locationFilter === '전체' || inf.location === locationFilter
-      const matchesTier = filterByTier(inf.followers_count, followerTier)
+    try {
+      console.log('🔍 인플루언서 데이터 가져오는 중...')
       
-      return matchesSearch && matchesCategory && matchesLocation && matchesTier
-    })
-  )
+      // 실제 데이터베이스에서 인플루언서 가져오기
+      const { data, error } = await supabase
+        .from('influencers')
+        .select('*')
+        .eq('is_active', true)  // 활성 상태인 인플루언서만
+        .order('followers_count', { ascending: false })
+      
+      if (error) {
+        console.error('❌ 인플루언서 조회 에러:', error)
+        throw error
+      }
+      
+      console.log('✅ 인플루언서 데이터:', data)
+      
+      if (data && data.length > 0) {
+        setInfluencers(data)
+        console.log(`📊 총 ${data.length}명의 인플루언서 로드`)
+      } else {
+        console.log('⚠️ 등록된 인플루언서가 없습니다')
+        setInfluencers([])
+      }
+      
+    } catch (error: any) {
+      console.error('Error fetching influencers:', error)
+      // 에러 발생 시 빈 배열로 설정
+      setInfluencers([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const toggleLike = (id: string) => {
-    setLikedInfluencers(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
-      }
-      return newSet
-    })
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      '패션': 'bg-purple-100 text-purple-700',
-      '뷰티': 'bg-pink-100 text-pink-700',
-      '여행': 'bg-blue-100 text-blue-700',
-      '음식': 'bg-orange-100 text-orange-700',
-      '피트니스': 'bg-green-100 text-green-700',
-      '일상': 'bg-gray-100 text-gray-700',
-      '라이프스타일': 'bg-yellow-100 text-yellow-700',
-      '셀럽': 'bg-red-100 text-red-700'
+    const newLiked = new Set(likedInfluencers)
+    if (newLiked.has(id)) {
+      newLiked.delete(id)
+    } else {
+      newLiked.add(id)
     }
-    return colors[category] || 'bg-gray-100 text-gray-700'
+    setLikedInfluencers(newLiked)
   }
 
-  const handleCardClick = (id: string) => {
-    router.push(`/advertiser/influencer/${id}`)
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  // 필터링 로직
+  const filteredInfluencers = influencers.filter(inf => {
+    const matchesSearch = inf.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         inf.instagram_handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         inf.bio?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesCategory = categoryFilter === '전체' || 
+                          inf.category === categoryFilter.toLowerCase() ||
+                          inf.category === categoryFilter
+    
+    let matchesFollowers = true
+    if (followerTier !== 'all') {
+      const followers = inf.followers_count
+      matchesFollowers = 
+        (followerTier === 'nano' && followers >= 1000 && followers < 10000) ||
+        (followerTier === 'micro' && followers >= 10000 && followers < 100000) ||
+        (followerTier === 'macro' && followers >= 100000 && followers < 1000000) ||
+        (followerTier === 'mega' && followers >= 1000000)
+    }
+    
+    return matchesSearch && matchesCategory && matchesFollowers
+  })
+
+  // 정렬
+  const sortedInfluencers = [...filteredInfluencers].sort((a, b) => {
+    if (sortBy === 'followers') {
+      return b.followers_count - a.followers_count
+    } else if (sortBy === 'engagement') {
+      return (b.engagement_rate || 0) - (a.engagement_rate || 0)
+    } else {
+      // 최신순 (ID 기준)
+      return b.id.localeCompare(a.id)
+    }
+  })
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold">
-            인플루언서
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/advertiser/likes">
-              <Button variant="ghost" size="sm">
-                <Heart className="h-4 w-4" />
+      {/* 헤더 */}
+      <header className="sticky top-0 z-10 bg-white border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold">광고주 대시보드</h1>
+              <Badge className="bg-green-100 text-green-700">
+                {influencers.length}명 등록
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchInfluencers}
+              >
+                <RefreshCw className="h-4 w-4" />
               </Button>
-            </Link>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="bg-white border-b px-4">
-        <div className="container mx-auto flex gap-6 overflow-x-auto">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`py-3 px-1 border-b-2 whitespace-nowrap text-sm ${
-                categoryFilter === cat 
-                  ? 'border-green-600 text-green-600 font-medium' 
-                  : 'border-transparent text-gray-600'
-              }`}
+      <main className="container mx-auto px-4 py-6">
+        {/* 검색 및 필터 */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="인플루언서 검색 (이름, @핸들, 소개)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
             >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white px-4 py-3">
-        <div className="container mx-auto flex gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            <Input
-              placeholder="인플루언서 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+              <Filter className="h-4 w-4 mr-2" />
+              필터 ({filteredInfluencers.length})
+            </Button>
+            <Button
+              onClick={fetchInfluencers}
+              variant="outline"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              새로고침
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      {showFilters && (
-        <div className="bg-white border-b px-4 py-3">
-          <div className="container mx-auto space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+          {/* 필터 옵션 */}
+          {showFilters && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
               <div>
-                <Label className="text-xs mb-1 block">지역</Label>
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="w-full h-10 text-sm border-gray-300">
-                    <SelectValue placeholder="지역 선택" />
+                <Label className="text-xs">카테고리</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectGroup>
-                      {locations.map(loc => (
-                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                      ))}
-                    </SelectGroup>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <Label className="text-xs mb-1 block">팔로워 범위</Label>
+                <Label className="text-xs">팔로워</Label>
                 <Select value={followerTier} onValueChange={setFollowerTier}>
-                  <SelectTrigger className="w-full h-10 text-sm border-gray-300">
-                    <SelectValue placeholder="팔로워 범위" />
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectGroup>
-                      {followerTierOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
+                    {followerTierOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs mb-1 block">정렬</Label>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full h-10 text-sm border-gray-300">
-                    <SelectValue placeholder="정렬 기준" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {sortOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => {
-                  setLocationFilter('전체')
-                  setFollowerTier('all')
-                  setSortBy('followers')
-                }}
-              >
-                초기화
-              </Button>
-              <Button 
-                size="sm"
-                onClick={() => setShowFilters(false)}
-              >
-                적용
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <div className="container mx-auto px-4 py-4">
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              <div>
+                <Label className="text-xs">정렬</Label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 인플루언서 그리드 */}
+        {sortedInfluencers.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {sortedInfluencers.map(influencer => (
+              <Card key={influencer.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="relative">
+                  {/* 커버 이미지 또는 포트폴리오 첫 번째 이미지 */}
+                  <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                    {influencer.cover_image || influencer.portfolio_urls?.[0] ? (
+                      <img 
+                        src={influencer.cover_image || influencer.portfolio_urls?.[0]} 
+                        alt={influencer.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                        <Instagram className="h-12 w-12 text-green-400" />
+                      </div>
+                    )}
+                    {/* 좋아요 버튼 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleLike(influencer.id)
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur rounded-full hover:bg-white transition"
+                    >
+                      <Heart 
+                        className={`h-5 w-5 ${likedInfluencers.has(influencer.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* 프로필 이미지 */}
+                    {influencer.profile_image ? (
+                      <img 
+                        src={influencer.profile_image}
+                        alt={influencer.name}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-green-100"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
+                        {influencer.name?.charAt(0) || 'I'}
+                      </div>
+                    )}
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <h3 className="font-semibold">{influencer.name || '이름 미설정'}</h3>
+                      </div>
+                      <p className="text-sm text-gray-500">@{influencer.instagram_handle}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 mt-3 line-clamp-2">
+                    {influencer.bio || '소개가 없습니다'}
+                  </p>
+
+                  {/* 카테고리 뱃지 */}
+                  {influencer.category && (
+                    <div className="mt-3">
+                      <Badge variant="secondary" className="text-xs">
+                        {influencer.category}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* 통계 */}
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t">
+                    <div>
+                      <p className="text-xs text-gray-500">팔로워</p>
+                      <p className="font-semibold">
+                        {influencer.followers_count ? formatNumber(influencer.followers_count) : '0'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">참여율</p>
+                      <p className="font-semibold">{influencer.engagement_rate || 0}%</p>
+                    </div>
+                  </div>
+
+                  <Link href={`/advertiser/influencer/${influencer.id}`}>
+                    <Button className="w-full mt-4" variant="outline">
+                      <Eye className="h-4 w-4 mr-2" />
+                      프로필 보기
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              {filteredInfluencers.map(influencer => (
-                <Card 
-                  key={influencer.id} 
-                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleCardClick(influencer.id)}
+          <Card className="p-12">
+            <div className="text-center">
+              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                {searchTerm || categoryFilter !== '전체' || followerTier !== 'all' 
+                  ? '검색 결과가 없습니다' 
+                  : '등록된 인플루언서가 없습니다'}
+              </h3>
+              <p className="text-gray-500 text-sm">
+                {searchTerm || categoryFilter !== '전체' || followerTier !== 'all'
+                  ? '필터 조건을 변경해보세요'
+                  : '인플루언서들이 가입하면 여기에 표시됩니다'}
+              </p>
+              {(searchTerm || categoryFilter !== '전체' || followerTier !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setSearchTerm('')
+                    setCategoryFilter('전체')
+                    setFollowerTier('all')
+                  }}
                 >
-                  <CardContent className="p-4 md:p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <img
-                            src={influencer.profile_picture_url || '/api/placeholder/60/60'}
-                            alt={influencer.name}
-                            className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover"
-                          />
-                          {influencer.is_verified && (
-                            <CheckCircle className="absolute -bottom-1 -right-1 h-4 w-4 text-blue-500 bg-white rounded-full" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-sm md:text-base truncate">
-                            {influencer.name}
-                          </h3>
-                          <p className="text-xs text-gray-500">서울</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleLike(influencer.id)
-                        }}
-                        className="p-1"
-                      >
-                        <Heart 
-                          className={`h-5 w-5 ${
-                            likedInfluencers.has(influencer.id) 
-                              ? 'fill-red-500 text-red-500' 
-                              : 'text-gray-400'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">팔로워</p>
-                        <p className="text-lg md:text-xl font-bold">
-                          {formatNumber(influencer.followers_count)}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-gray-400" />
-                        <span className="text-xs text-gray-500">참여율</span>
-                        <span className="text-xs font-medium">{influencer.engagement_rate}%</span>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(influencer.category)}`}>
-                          {influencer.category}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCardClick(influencer.id)
-                        }}
-                      >
-                        자세히 보기
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  필터 초기화
+                </Button>
+              )}
             </div>
-
-            {filteredInfluencers.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">검색 결과가 없습니다</p>
-              </div>
-            )}
-          </>
+          </Card>
         )}
-      </div>
+
+        {/* 디버그 정보 (개발 환경) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 bg-gray-100 rounded-lg text-xs">
+            <p className="font-semibold mb-2">🔧 디버그 정보:</p>
+            <p>총 인플루언서: {influencers.length}명</p>
+            <p>필터링 후: {filteredInfluencers.length}명</p>
+            <p>표시 중: {sortedInfluencers.length}명</p>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="mt-2"
+              onClick={() => setUseMockData(!useMockData)}
+            >
+              {useMockData ? '실제 데이터 사용' : '목 데이터 사용'}
+            </Button>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
