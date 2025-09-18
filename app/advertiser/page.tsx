@@ -325,39 +325,60 @@ export default function AdvertiserPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 - 애니메이션 추가 */}
       <header className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b transition-all duration-300">
-        <div className="container mx-auto px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                광고주 대시보드
-              </h1>
-              <Badge className="bg-green-100 text-green-700 text-xs sm:text-sm animate-fade-in">
-                <Sparkles className="h-3 w-3 mr-1" />
-                {influencers.length}명 등록
-              </Badge>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={() => fetchInfluencers(true)}
-                disabled={refreshing}
-                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleSignOut}
-                className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:bg-red-50 hover:text-red-600"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  <div className="container mx-auto px-4 py-3 sm:py-4">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          광고주 대시보드
+        </h1>
+        <Badge className="bg-green-100 text-green-700 text-xs sm:text-sm animate-fade-in">
+          <Sparkles className="h-3 w-3 mr-1" />
+          {influencers.length}명 등록
+        </Badge>
+      </div>
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* 찜목록 버튼 - 모바일에서만 표시 */}
+        {likedInfluencers.size > 0 && (
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => {
+              const likedSection = document.getElementById('liked-influencers-section')
+              if (likedSection) {
+                likedSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
+            className="h-8 w-8 sm:hidden transition-all hover:scale-105 relative"
+          >
+            <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+            {likedInfluencers.size > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                {likedInfluencers.size}
+              </span>
+            )}
+          </Button>
+        )}
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => fetchInfluencers(true)}
+          disabled={refreshing}
+          className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleSignOut}
+          className="h-8 w-8 sm:h-9 sm:w-9 transition-all hover:scale-105 hover:bg-red-50 hover:text-red-600"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  </div>
+</header>
 
       <main className="container mx-auto px-4 py-4 sm:py-6">
         {/* 검색 및 필터 - 향상된 인터랙션 */}
@@ -657,7 +678,10 @@ export default function AdvertiserPage() {
 
         {/* 좋아요한 인플루언서 섹션 */}
         {likedInfluencers.size > 0 && (
-          <div className="mt-8 p-4 bg-gradient-to-r from-pink-50 to-red-50 rounded-xl border border-pink-200">
+          
+          <div 
+          id="liked-influencers-section"
+          className="mt-8 p-4 bg-gradient-to-r from-pink-50 to-red-50 rounded-xl border border-pink-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm sm:text-base font-semibold flex items-center gap-2">
                 <Heart className="h-4 w-4 text-red-500 fill-red-500" />
