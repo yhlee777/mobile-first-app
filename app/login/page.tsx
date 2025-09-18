@@ -17,15 +17,15 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
   
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password) {
-      setError('이메일과 비밀번호를 입력해주세요')
+    if (!identifier || !password) {
+      setError('아이디와 비밀번호를 입력해주세요')
       return
     }
 
@@ -33,8 +33,15 @@ export default function LoginPage() {
     setError(null)
     
     try {
+      let loginEmail = identifier
+      
+      // @ 없고 이메일 형식이 아니면 인스타그램 ID로 간주
+      if (!identifier.includes('@') && !identifier.includes('.')) {
+        loginEmail = `${identifier}@instagram.temp`
+      }
+      
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email,
+        email: loginEmail,
         password: password,
       })
 
@@ -73,7 +80,7 @@ export default function LoginPage() {
       console.error('로그인 오류:', error)
       
       if (error.message?.includes('Invalid login credentials')) {
-        setError('이메일 또는 비밀번호가 올바르지 않습니다')
+        setError('아이디 또는 비밀번호가 올바르지 않습니다')
       } else if (error.message?.includes('Email not confirmed')) {
         setError('이메일 인증을 완료해주세요')
       } else {
@@ -115,17 +122,17 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
-                <Label htmlFor="email">이메일</Label>
+                <Label htmlFor="identifier">이메일 또는 인스타그램 ID</Label>
                 <div className="mt-1">
                   <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="이메일을 입력하세요"
+                    id="identifier"
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="이메일 또는 @없이 인스타그램 ID"
                     className="h-11 sm:h-12 text-base"
                     disabled={loading}
-                    autoComplete="email"
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -188,33 +195,18 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">또는</span>
+                <span className="px-2 bg-white text-gray-500">계정이 없으신가요?</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Link href="/influencer/signup" passHref>
-                <Button 
-                  variant="outline" 
-                  className="w-full h-11 sm:h-12 text-base border-2 hover:bg-green-50 hover:border-green-600 hover:text-green-600 transition-colors"
-                >
-                  <span className="flex items-center gap-2">
-                    인플루언서로 시작하기
-                  </span>
-                </Button>
-              </Link>
-              
-              <Link href="/auth/signup" passHref>
-                <Button 
-                  variant="outline" 
-                  className="w-full h-11 sm:h-12 text-base border-2 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600 transition-colors"
-                >
-                  <span className="flex items-center gap-2">
-                    광고주로 시작하기
-                  </span>
-                </Button>
-              </Link>
-            </div>
+            <Link href="/signup" passHref>
+              <Button 
+                variant="outline" 
+                className="w-full h-11 sm:h-12 text-base border-2 hover:bg-green-50 hover:border-green-600 hover:text-green-600 transition-colors"
+              >
+                회원가입
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
