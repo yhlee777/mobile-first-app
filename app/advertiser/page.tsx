@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
+  
   Select,
   SelectContent,
   SelectGroup,
@@ -32,7 +33,8 @@ import {
   Star,
   Award,
   TrendingUp,
-  Clock
+  Clock,
+  ArrowRight
 } from 'lucide-react'
 
 interface Influencer {
@@ -391,12 +393,14 @@ export default function AdvertiserDashboard() {
       <main className="px-3 sm:px-4 py-4 sm:py-6">
         {filteredInfluencers.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            // ... (이전 코드 동일)
+
             {filteredInfluencers.map((influencer) => (
               <Card key={influencer.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
-                  {/* 프로필 이미지 */}
-                  <div className="relative">
-                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  {/* 프로필 이미지 - 모바일에서 클릭 가능 */}
+                  <Link href={`/advertiser/influencer/${influencer.id}`}>
+                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center cursor-pointer">
                       {influencer.profile_image ? (
                         <img 
                           src={influencer.profile_image} 
@@ -406,30 +410,37 @@ export default function AdvertiserDashboard() {
                       ) : (
                         <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
                       )}
+                      
+                      {/* 모바일 터치 피드백 오버레이 */}
+                      <div className="absolute inset-0 bg-black opacity-0 hover:opacity-10 transition-opacity sm:hidden" />
                     </div>
-                    
-                    {/* 좋아요 버튼 */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-2 right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 hover:bg-white p-0"
-                      onClick={() => toggleFavorite(influencer.id)}
-                    >
-                      <Heart 
-                        className={`h-3 w-3 sm:h-4 sm:w-4 ${
-                          favoriteIds.includes(influencer.id) 
-                            ? 'fill-red-500 text-red-500' 
-                            : 'text-gray-600'
-                        }`} 
-                      />
-                    </Button>
+                  </Link>
+                  
+                  {/* 좋아요 버튼 */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 w-8 h-8 sm:w-8 sm:h-8 rounded-full bg-white/90 hover:bg-white p-0 shadow-md"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleFavorite(influencer.id)
+                    }}
+                  >
+                    <Heart 
+                      className={`h-4 w-4 ${
+                        favoriteIds.includes(influencer.id) 
+                          ? 'fill-red-500 text-red-500' 
+                          : 'text-gray-600'
+                      }`} 
+                    />
+                  </Button>
 
-                    {/* 카테고리 태그 */}
-                    <div className="absolute bottom-2 left-2">
-                      <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
-                        {influencer.category}
-                      </Badge>
-                    </div>
+                  {/* 카테고리 태그 */}
+                  <div className="absolute bottom-2 left-2">
+                    <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
+                      {influencer.category}
+                    </Badge>
                   </div>
 
                   {/* 인플루언서 정보 */}
@@ -460,27 +471,23 @@ export default function AdvertiserDashboard() {
                       </div>
                     </div>
 
-                    {/* 자세히 보기 버튼 */}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-2 text-xs brand-primary-text brand-primary-border hover:brand-primary hover:text-white h-8"
-                      asChild
-                    >
-                      <Link href={`/advertiser/influencer/${influencer.id}`}>
+                    {/* 자세히 보기 버튼 - 모바일 최적화 */}
+                    <Link href={`/advertiser/influencer/${influencer.id}`}>
                       <Button 
-                        variant="outline" 
+                        variant="default" 
                         size="sm" 
-                        className="w-full mt-2 text-xs border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-400 h-8 transition-all"
+                        className="w-full mt-3 h-10 text-sm bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150"
                       >
                         자세히 보기
+                        <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
+
+// ... (나머지 코드 동일)
           </div>
         ) : (
           <div className="text-center py-12">

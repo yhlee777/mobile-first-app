@@ -10,8 +10,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft,
-  Mail,
-  Lock,
   Loader2,
 } from 'lucide-react'
 
@@ -35,7 +33,6 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      // Supabase 로그인
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
@@ -46,7 +43,6 @@ export default function LoginPage() {
       }
 
       if (authData.user) {
-        // 사용자 타입 확인 - influencers 테이블에서 먼저 확인
         const { data: influencerData, error: influencerError } = await supabase
           .from('influencers')
           .select('id, user_id')
@@ -54,12 +50,10 @@ export default function LoginPage() {
           .single()
 
         if (influencerData && !influencerError) {
-          // 인플루언서라면 대시보드로
           router.push('/dashboard')
           return
         }
 
-        // advertisers 테이블에서 확인
         const { data: advertiserData, error: advertiserError } = await supabase
           .from('advertisers')
           .select('id, user_id')
@@ -67,12 +61,10 @@ export default function LoginPage() {
           .single()
 
         if (advertiserData && !advertiserError) {
-          // 광고주라면 광고주 페이지로
           router.push('/advertiser')
           return
         }
 
-        // 둘 다 아니라면 기본으로 광고주 페이지로 (또는 온보딩 페이지로)
         console.log('사용자 타입을 확인할 수 없습니다. 기본 페이지로 이동합니다.')
         router.push('/advertiser')
       }
@@ -95,7 +87,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8" style={{ zoom: 'reset' }}>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* 뒤로가기 버튼 */}
         <div className="mb-6 sm:mb-8">
           <Button
             variant="ghost"
@@ -125,15 +116,14 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email">이메일</Label>
-                <div className="mt-1 relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
+                <div className="mt-1">
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="이메일을 입력하세요"
-                    className="pl-10 h-11 sm:h-12 text-base"
+                    className="h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="email"
                   />
@@ -142,15 +132,14 @@ export default function LoginPage() {
 
               <div>
                 <Label htmlFor="password">비밀번호</Label>
-                <div className="mt-1 relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
+                <div className="mt-1">
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
-                    className="pl-10 h-11 sm:h-12 text-base"
+                    className="h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="current-password"
                   />

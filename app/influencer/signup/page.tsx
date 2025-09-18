@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react'
+import { User, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function InfluencerSignupPage() {
@@ -23,7 +23,6 @@ export default function InfluencerSignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // 비밀번호 검증
     if (password !== passwordConfirm) {
       setError('비밀번호가 일치하지 않습니다.')
       return
@@ -39,8 +38,6 @@ export default function InfluencerSignupPage() {
     try {
       const supabase = createClient()
       
-      // 1. Auth 회원가입
-      console.log('Starting signup with email:', email)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -66,9 +63,6 @@ export default function InfluencerSignupPage() {
         throw new Error('회원가입에 실패했습니다.')
       }
 
-      console.log('Auth successful, user ID:', authData.user.id)
-      
-      // 2. users 테이블에 기본 정보 삽입
       const { error: userError } = await supabase
         .from('users')
         .insert([
@@ -83,19 +77,14 @@ export default function InfluencerSignupPage() {
         console.error('User table error:', userError)
       }
       
-      console.log('Signup completed successfully')
-      
-      // 3. 자동 로그인 시도
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
       })
       
       if (signInData?.user) {
-        // 로그인 성공 - 온보딩으로 이동
         router.push('/influencer/onboarding')
       } else {
-        // 로그인 실패 - 로그인 페이지로 이동
         console.log('Auto sign-in failed:', signInError)
         router.push('/login')
       }
@@ -126,34 +115,26 @@ export default function InfluencerSignupPage() {
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">이름</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="홍길동"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="name"
+                type="text"
+                placeholder="홍길동"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">이메일</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
               <p className="text-xs text-gray-500">
                 * 실제 이메일 주소를 입력해주세요
               </p>
@@ -161,35 +142,27 @@ export default function InfluencerSignupPage() {
             
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
               <p className="text-xs text-gray-500">* 최소 6자 이상</p>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
-                <Input
-                  id="passwordConfirm"
-                  type="password"
-                  placeholder="••••••••"
-                  value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
+              <Input
+                id="passwordConfirm"
+                type="password"
+                placeholder="••••••••"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                required
+              />
             </div>
             
             {error && (
