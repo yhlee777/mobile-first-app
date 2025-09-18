@@ -44,6 +44,50 @@
   background-color: #4a9565;
 }
 
+/* 모바일 줌 방지 */
+* {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 입력 필드 줌 방지 */
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="search"],
+textarea,
+select {
+  font-size: 16px !important;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+@media screen and (max-width: 768px) {
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    transform: scale(1);
+    zoom: 1;
+  }
+}
+
+/* 스크롤바 숨기기 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom select dropdown styles with complete border */
 .select-with-border option {
   padding: 8px 12px;

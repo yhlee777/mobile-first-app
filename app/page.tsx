@@ -21,38 +21,60 @@ export default function LandingPage() {
             {/* 브랜드 로고 */}
             <h1 className="text-2xl sm:text-3xl font-bold brand-primary-text">잇다</h1>
             
-            {/* 로그인 버튼 */}
-            <Button 
-              variant="outline" 
-              className="brand-primary-border brand-primary-text hover:brand-primary hover:text-white"
-              asChild
-            >
-              <Link href="/login">로그인</Link>
-            </Button>
+            {/* 로그인 버튼 제거 */}
+            <div></div>
           </div>
         </div>
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className="container mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center max-w-4xl mx-auto">
           {/* 메인 타이틀 */}
-          <div className="mb-8 sm:mb-12">
-            <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-200 mb-6">
+          <div className="mb-6 sm:mb-8">
+            <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-200 mb-4">
               <Sparkles className="h-4 w-4 brand-primary-text" />
               <span className="text-sm font-medium text-gray-700">인플루언서 마케팅 플랫폼</span>
             </div>
             
-            <h2 className="text-4xl sm:text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-4 leading-tight">
               인플루언서와 <br />
               <span className="brand-primary-text">광고주</span>를 잇다
             </h2>
             
-            <p className="text-lg sm:text-xl text-gray-600 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed">
               효과적인 마케팅 캠페인을 위한 스마트한 매칭 플랫폼입니다. 
               <br className="hidden sm:block" />
               지금 시작해서 새로운 기회를 만나보세요.
             </p>
+          </div>
+
+          {/* CTA 버튼들 - 로그인 링크로 변경 */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-12 sm:mb-16">
+            <Button 
+              size="lg" 
+              className="w-full sm:w-auto brand-primary brand-primary-hover text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              asChild
+            >
+              <Link href="/login" className="flex items-center gap-3">
+                <Building className="h-5 w-5" />
+                광고주로 시작하기
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+            
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="w-full sm:w-auto brand-primary-border brand-primary-text hover:brand-primary hover:text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              asChild
+            >
+              <Link href="/login" className="flex items-center gap-3">
+                <Users className="h-5 w-5" />
+                인플루언서로 시작하기
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
           </div>
 
           {/* 주요 기능 카드 */}
@@ -80,34 +102,6 @@ export default function LandingPage() {
               <h3 className="font-semibold text-gray-900 mb-2">간편한 관리</h3>
               <p className="text-sm text-gray-600">직관적인 대시보드로 모든 활동을 효율적으로 관리</p>
             </div>
-          </div>
-
-          {/* CTA 버튼들 */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-16">
-            <Button 
-              size="lg" 
-              className="w-full sm:w-auto brand-primary brand-primary-hover text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              asChild
-            >
-              <Link href="/auth/signup" className="flex items-center gap-3">
-                <Building className="h-5 w-5" />
-                광고주로 시작하기
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
-            
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="w-full sm:w-auto brand-primary-border brand-primary-text hover:brand-primary hover:text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              asChild
-            >
-              <Link href="/influencer/signup" className="flex items-center gap-3">
-                <Users className="h-5 w-5" />
-                인플루언서로 시작하기
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
           </div>
 
           {/* 통계 섹션 */}
@@ -139,15 +133,16 @@ export default function LandingPage() {
             <div className="md:col-span-2">
               <h3 className="text-white font-bold text-xl mb-4">잇다</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                인플루언서와 광고주를 연결하는 스마트한 마케팅 플랫폼입니다. 
+                인플루언서와 광고주를 연결하는 스마트한 마케팅 플랫폼입니다.
+                <br className="hidden sm:block" />
                 AI 기반 매칭과 실시간 분석으로 성공적인 캠페인을 만들어보세요.
               </p>
             </div>
             <div>
               <h3 className="text-white font-semibold mb-4">서비스</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/influencer/signup" className="hover:text-white transition-colors">인플루언서</Link></li>
-                <li><Link href="/auth/signup" className="hover:text-white transition-colors">광고주</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">인플루언서</Link></li>
+                <li><Link href="/login" className="hover:text-white transition-colors">광고주</Link></li>
                 <li><a href="#" className="hover:text-white transition-colors">캠페인 관리</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">성과 분석</a></li>
               </ul>

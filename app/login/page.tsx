@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,8 @@ import {
 
 export default function LoginPage() {
   const router = useRouter()
+  const supabase = createClient()
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,59 +37,94 @@ export default function LoginPage() {
     setError(null)
     
     try {
-      // 실제 로그인 로직
-      console.log('로그인 시도:', email)
-      
-      // Mock: 2초 후 광고주 페이지로 리다이렉트
-      setTimeout(() => {
-        setLoading(false)
+      // Supabase 로그인
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      })
+
+      if (authError) {
+        throw authError
+      }
+
+      if (authData.user) {
+        // 사용자 타입 확인 - influencers 테이블에서 먼저 확인
+        const { data: influencerData, error: influencerError } = await supabase
+          .from('influencers')
+          .select('id, user_id')
+          .eq('user_id', authData.user.id)
+          .single()
+
+        if (influencerData && !influencerError) {
+          // 인플루언서라면 대시보드로
+          router.push('/dashboard')
+          return
+        }
+
+        // advertisers 테이블에서 확인
+        const { data: advertiserData, error: advertiserError } = await supabase
+          .from('advertisers')
+          .select('id, user_id')
+          .eq('user_id', authData.user.id)
+          .single()
+
+        if (advertiserData && !advertiserError) {
+          // 광고주라면 광고주 페이지로
+          router.push('/advertiser')
+          return
+        }
+
+        // 둘 다 아니라면 기본으로 광고주 페이지로 (또는 온보딩 페이지로)
+        console.log('사용자 타입을 확인할 수 없습니다. 기본 페이지로 이동합니다.')
         router.push('/advertiser')
-      }, 2000)
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('로그인 오류:', error)
-      setError('로그인 중 오류가 발생했습니다')
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다')
+      } else if (error.message?.includes('Email not confirmed')) {
+        setError('이메일 인증을 완료해주세요')
+      } else {
+        setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.')
+      }
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8" style={{ zoom: 'reset' }}>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* 뒤로가기 버튼 */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Button
             variant="ghost"
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            뒤로가기
+            돌아가기
           </Button>
         </div>
 
-        {/* 브랜드 로고 - 원형 제거하고 텍스트만 */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold brand-primary-text mb-2">잇다</h2>
-          <h3 className="text-2xl font-bold text-gray-900">로그인</h3>
-          <p className="text-gray-600 mt-2">이메일과 비밀번호로 로그인하세요</p>
-        </div>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>계정 로그인</CardTitle>
-            <CardDescription>
-              기존 계정으로 서비스를 이용하세요
+        <Card className="shadow-lg border-0">
+          <CardHeader className="text-center space-y-2 pb-4">
+            <CardTitle className="text-2xl font-bold brand-primary-text">로그인</CardTitle>
+            <CardDescription className="text-gray-600">
+              계정에 로그인하여 파트너를 만나보세요
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="space-y-4 sm:space-y-6">
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email">이메일</Label>
                 <div className="mt-1 relative">
@@ -96,9 +134,10 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@email.com"
-                    className="pl-10"
+                    placeholder="이메일을 입력하세요"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     disabled={loading}
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -113,8 +152,9 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
-                    className="pl-10"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     disabled={loading}
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -142,7 +182,7 @@ export default function LoginPage() {
 
               <Button 
                 type="submit" 
-                className="w-full brand-primary brand-primary-hover text-white" 
+                className="w-full brand-primary brand-primary-hover text-white h-11 sm:h-12 text-base" 
                 disabled={loading}
               >
                 {loading ? (
@@ -170,7 +210,8 @@ export default function LoginPage() {
                 <Link href="/influencer/signup">
                   <Button 
                     variant="outline" 
-                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text"
+                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text h-10 text-sm"
+                    disabled={loading}
                   >
                     <Users className="h-4 w-4 mr-2" />
                     인플루언서 가입
@@ -179,7 +220,8 @@ export default function LoginPage() {
                 <Link href="/auth/signup">
                   <Button 
                     variant="outline" 
-                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text"
+                    className="w-full hover:bg-gray-50 brand-primary-border brand-primary-text h-10 text-sm"
+                    disabled={loading}
                   >
                     <Building className="h-4 w-4 mr-2" />
                     광고주 가입
@@ -192,8 +234,8 @@ export default function LoginPage() {
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-6 p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs font-semibold text-gray-600 mb-2">🔧 개발자 정보:</p>
-                <p className="text-xs text-gray-500">테스트 계정: test@example.com / 123456</p>
-                <p className="text-xs text-gray-500 mt-1">콘솔에서 라우팅 과정을 확인하세요</p>
+                <p className="text-xs text-gray-500">테스트 계정을 생성하여 테스트해보세요</p>
+                <p className="text-xs text-gray-500 mt-1">로그인 후 DB에서 사용자 유형을 확인하여 적절한 페이지로 이동합니다</p>
               </div>
             )}
           </CardContent>
