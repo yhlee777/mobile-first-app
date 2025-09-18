@@ -468,8 +468,14 @@ export default function AdvertiserDashboard() {
                       asChild
                     >
                       <Link href={`/advertiser/influencer/${influencer.id}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full mt-2 text-xs border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-400 h-8 transition-all"
+                      >
                         자세히 보기
-                      </Link>
+                      </Button>
+                    </Link>
                     </Button>
                   </div>
                 </CardContent>

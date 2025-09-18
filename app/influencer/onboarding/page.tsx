@@ -59,7 +59,7 @@ export default function InfluencerOnboarding() {
       .single()
 
     if (existingInfluencer) {
-      router.push('/influencer/dashboard')
+      router.push('/dashboard')
     }
   }
 

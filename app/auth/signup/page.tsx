@@ -127,7 +127,7 @@ export default function AdvertiserSignupPage() {
             <div className="space-y-2">
               <Label htmlFor="companyName">회사명</Label>
               <div className="relative">
-                <Building className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <Building className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
                 <Input
                   id="companyName"
                   type="text"
@@ -143,7 +143,7 @@ export default function AdvertiserSignupPage() {
             <div className="space-y-2">
               <Label htmlFor="email">이메일</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
                 <Input
                   id="email"
                   type="email"
@@ -162,7 +162,7 @@ export default function AdvertiserSignupPage() {
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
                 <Input
                   id="password"
                   type="password"
@@ -179,7 +179,7 @@ export default function AdvertiserSignupPage() {
             <div className="space-y-2">
               <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-600" />
                 <Input
                   id="passwordConfirm"
                   type="password"

@@ -10,6 +10,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft,
+  Mail,
+  Lock,
   Loader2,
 } from 'lucide-react'
 
@@ -123,14 +125,15 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email">이메일</Label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="이메일을 입력하세요"
-                    className="h-11 sm:h-12 text-base"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="email"
                   />
@@ -139,14 +142,15 @@ export default function LoginPage() {
 
               <div>
                 <Label htmlFor="password">비밀번호</Label>
-                <div className="mt-1">
+                <div className="mt-1 relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
-                    className="h-11 sm:h-12 text-base"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     disabled={loading}
                     autoComplete="current-password"
                   />
