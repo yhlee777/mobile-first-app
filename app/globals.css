@@ -25,55 +25,40 @@
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
   }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142.1 70.6% 45.3%;
-    --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142.1 76.2% 36.3%;
-  }
-
-  * {
-    border-color: hsl(var(--border));
-  }
-  
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-  }
 }
 
-/* Fix for Radix UI Select content */
-@layer components {
-  [data-radix-select-content] {
-    background-color: white !important;
-    border: 1px solid hsl(var(--border)) !important;
-  }
+/* Custom select dropdown styles with complete border */
+.select-with-border option {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  margin: 0;
+}
 
-  [data-radix-select-viewport] {
-    background-color: white !important;
-  }
+.select-with-border optgroup {
+  border: 1px solid #e5e7eb;
+}
 
-  [data-radix-select-item] {
-    background-color: transparent !important;
-  }
+/* Ensure dropdown has complete border on all sides */
+select.select-with-border {
+  border: 1px solid #d1d5db !important;
+  outline: none;
+}
 
-  [data-radix-select-item][data-highlighted] {
-    background-color: hsl(var(--accent)) !important;
-  }
+select.select-with-border:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Override default browser dropdown styles */
+select option {
+  background-color: white;
+  color: #374151;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
