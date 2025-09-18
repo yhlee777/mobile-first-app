@@ -10,8 +10,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 200 35% 40%; /* #51a66f 색상 적용 */
+    --primary-foreground: 0 0% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
@@ -22,9 +22,26 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 142.1 76.2% 36.3%;
+    --ring: 200 35% 40%; /* #51a66f 색상 적용 */
     --radius: 0.5rem;
   }
+}
+
+/* 브랜드 컬러 유틸리티 클래스 */
+.brand-primary {
+  background-color: #51a66f;
+}
+
+.brand-primary-text {
+  color: #51a66f;
+}
+
+.brand-primary-border {
+  border-color: #51a66f;
+}
+
+.brand-primary-hover:hover {
+  background-color: #4a9565;
 }
 
 /* Custom select dropdown styles with complete border */
@@ -45,8 +62,8 @@ select.select-with-border {
 }
 
 select.select-with-border:focus {
-  border-color: #10b981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+  border-color: #51a66f !important;
+  box-shadow: 0 0 0 3px rgba(81, 166, 111, 0.1) !important;
 }
 
 /* Override default browser dropdown styles */
@@ -61,63 +78,4 @@ select option:active,
 select option:checked {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
-}
-/* 기존 globals.css에 추가 */
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-bottom {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out forwards;
-}
-
-.animate-slide-in-bottom {
-  animation: slide-in-bottom 0.3s ease-out;
-}
-
-/* 부드러운 스크롤 */
-html {
-  scroll-behavior: smooth;
-}
-
-/* 커스텀 스크롤바 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #10b981;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #059669;
-}
-
-/* 터치 디바이스 최적화 */
-.touch-manipulation {
-  touch-action: manipulation;
 }
