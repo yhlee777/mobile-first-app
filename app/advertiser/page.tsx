@@ -36,7 +36,7 @@ import {
   ArrowRight,
   Loader2
 } from 'lucide-react'
-
+import { Store, Briefcase } from 'lucide-react'
 interface Influencer {
   id: string
   instagram_handle: string
@@ -197,25 +197,46 @@ export default function AdvertiserDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
       {/* 상단 헤더 */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="px-3 sm:px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">광고주 대시보드</h1>
-              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">인플루언서를 찾아보세요</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
+     {/* 상단 헤더 */}
+<header className="bg-white border-b sticky top-0 z-40">
+  <div className="px-3 sm:px-4 py-3">
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">광고주 대시보드</h1>
+        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">인플루언서를 찾아보세요</p>
+      </div>
+      <div className="flex items-center gap-1 sm:gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push('/advertiser/profile')}
+          className="text-gray-600 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+        >
+          <Store className="h-4 w-4" />
+          <span className="text-[9px] sm:text-xs">내 가게</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push('/advertiser/campaigns')}
+          className="text-gray-600 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+        >
+          <Briefcase className="h-4 w-4" />
+          <span className="text-[9px] sm:text-xs">캠페인</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className="text-gray-600 hover:text-gray-900 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="text-[9px] sm:text-xs">로그아웃</span>
+        </Button>
+      </div>
+    </div>
+  </div>
+</header>
       {/* 검색 및 필터 섹션 */}
       <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b">
         <div className="flex gap-2">

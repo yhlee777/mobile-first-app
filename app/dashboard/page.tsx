@@ -27,7 +27,8 @@ import {
   UserCircle,
   Loader2
 } from 'lucide-react'
-
+import { NotificationBell } from '@/components/notifications/notification-bell'
+import { Briefcase } from 'lucide-react'
 interface Influencer {
   id: string
   instagram_handle: string
@@ -91,59 +92,64 @@ export default function InfluencerDashboard() {
     loadInfluencersAndProfile()
   }, [])
 
-  const loadInfluencersAndProfile = async () => {
-    try {
-      setLoading(true)
-      
-      // 현재 사용자 정보 로드
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('influencers')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (profileData) {
-          setCurrentUser(profileData)
-          
-          // 프로필 완성도 계산
-          let score = 0
-          if (profileData.name) score += 20
-          if (profileData.bio) score += 20
-          if (profileData.category) score += 20
-          if (profileData.location) score += 10
-          if (profileData.profile_image) score += 10
-          if (profileData.portfolio_urls?.length > 0) score += 20
-          setCompletionScore(score)
-        }
-      }
-      
-      // 모든 인플루언서 로드 (본인 제외)
-      const { data, error } = await supabase
+ const loadInfluencersAndProfile = async () => {
+  try {
+    setLoading(true)
+    
+    // 1. 먼저 현재 사용자 정보 로드
+    const { data: { user } } = await supabase.auth.getUser()
+    let myInfluencerId = null
+    
+    if (user) {
+      const { data: profileData } = await supabase
         .from('influencers')
         .select('*')
-        .eq('is_active', true)
-        .order('followers_count', { ascending: false })
+        .eq('user_id', user.id)
+        .single()
       
-      if (error) {
-        console.error('Error loading influencers:', error)
-        return
+      if (profileData) {
+        setCurrentUser(profileData)
+        myInfluencerId = profileData.id  // 내 인플루언서 ID 저장
+        
+        // 프로필 완성도 계산
+        let score = 0
+        if (profileData.name) score += 20
+        if (profileData.bio) score += 20
+        if (profileData.category) score += 20
+        if (profileData.location) score += 10
+        if (profileData.profile_image) score += 10
+        if (profileData.portfolio_urls?.length > 0) score += 20
+        setCompletionScore(score)
       }
-      
-      if (data) {
-        // 현재 사용자 제외
-        const filteredData = currentUser 
-          ? data.filter(inf => inf.id !== currentUser.id)
-          : data
-        setInfluencers(filteredData)
-      }
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
     }
+    
+    // 2. 모든 인플루언서 로드
+    const { data, error } = await supabase
+      .from('influencers')
+      .select('*')
+      .eq('is_active', true)
+      .order('followers_count', { ascending: false })
+    
+    if (error) {
+      console.error('Error loading influencers:', error)
+      return
+    }
+    
+    if (data) {
+      // 3. 내 프로필 제외하고 설정
+      const filteredData = myInfluencerId 
+        ? data.filter(inf => inf.id !== myInfluencerId)  // id로 비교
+        : data
+      
+      console.log(`총 ${data.length}명 중 ${filteredData.length}명 표시 (본인 제외)`)
+      setInfluencers(filteredData)
+    }
+  } catch (error) {
+    console.error('Error:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -200,36 +206,48 @@ export default function InfluencerDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
       {/* 헤더 */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="px-3 sm:px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">인플루언서 둘러보기</h1>
-              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">다른 인플루언서들을 만나보세요</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/profile/edit">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="p-2"
-                >
-                  <UserCircle className="h-5 w-5" />
-                </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSignOut}
-                className="p-2"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+     <header className="bg-white border-b sticky top-0 z-40">
+  <div className="px-3 sm:px-4 py-3">
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">인플루언서 둘러보기</h1>
+        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">다른 인플루언서들을 만나보세요</p>
+      </div>
+      <div className="flex items-center gap-1 sm:gap-2">
+        <NotificationBell />
+        <Link href="/influencer/campaigns">
+          <Button
+            variant="outline"
+            size="sm"
+            className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+          >
+            <Briefcase className="h-4 w-4" />
+            <span className="text-[9px] sm:text-xs">캠페인</span>
+          </Button>
+        </Link>
+        <Link href="/profile/edit">
+          <Button
+            variant="outline"
+            size="sm"
+            className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+          >
+            <UserCircle className="h-4 w-4" />
+            <span className="text-[9px] sm:text-xs">프로필</span>
+          </Button>
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="text-[9px] sm:text-xs">로그아웃</span>
+        </Button>
+      </div>
+    </div>
+  </div>
+</header>
       {/* 검색 및 필터 */}
       <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b">
         <div className="flex gap-2">

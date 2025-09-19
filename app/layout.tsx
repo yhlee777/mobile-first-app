@@ -1,19 +1,27 @@
-﻿import './globals.css'
-import type { Metadata } from 'next'
+﻿import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import { ToastProvider } from '@/components/ui/toast'
+import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'itda - 인플루언서와 광고주를 잇다',
-  description: '효과적인 마케팅 캠페인을 위한 최적의 파트너를 찾아드립니다',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+  title: '인플루언서 매칭',
+  description: '브랜드와 인플루언서 연결 플랫폼',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '인플루언서 매칭',
+  }
+}
+
+// themeColor를 viewport로 이동
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#51a66f'
 }
 
 export default function RootLayout({
@@ -24,13 +32,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className={inter.className}>
-        <ToastProvider>
-          {children}
-        </ToastProvider>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }
