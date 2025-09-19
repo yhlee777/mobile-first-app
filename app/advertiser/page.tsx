@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 import {
   Select,
   SelectContent,
@@ -205,33 +206,31 @@ export default function AdvertiserDashboard() {
         <h1 className="text-lg sm:text-xl font-bold text-gray-900">광고주 대시보드</h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-0.5">인플루언서를 찾아보세요</p>
       </div>
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-2">
+        <NotificationBell />
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push('/advertiser/profile')}
-          className="text-gray-600 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
-        >
-          <Store className="h-4 w-4" />
-          <span className="text-[9px] sm:text-xs">내 가게</span>
-        </Button>
-        <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => router.push('/advertiser/campaigns')}
-          className="text-gray-600 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+          className="p-2"
         >
-          <Briefcase className="h-4 w-4" />
-          <span className="text-[9px] sm:text-xs">캠페인</span>
+          <Briefcase className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/advertiser/profile')}
+          className="p-2"
+        >
+          <Store className="h-5 w-5" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleSignOut}
-          className="text-gray-600 hover:text-gray-900 p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+          className="p-2"
         >
-          <LogOut className="h-4 w-4" />
-          <span className="text-[9px] sm:text-xs">로그아웃</span>
+          <LogOut className="h-5 w-5" />
         </Button>
       </div>
     </div>

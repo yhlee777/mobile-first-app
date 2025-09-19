@@ -210,39 +210,34 @@ export default function InfluencerDashboard() {
   <div className="px-3 sm:px-4 py-3">
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-lg sm:text-xl font-bold text-gray-900">인플루언서 둘러보기</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">다른 인플루언서들을 만나보세요</p>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">인플루언서 대시보드</h1>
+        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">캠페인을 찾아보세요</p>
       </div>
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-2">
         <NotificationBell />
-        <Link href="/influencer/campaigns">
-          <Button
-            variant="outline"
-            size="sm"
-            className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
-          >
-            <Briefcase className="h-4 w-4" />
-            <span className="text-[9px] sm:text-xs">캠페인</span>
-          </Button>
-        </Link>
-        <Link href="/profile/edit">
-          <Button
-            variant="outline"
-            size="sm"
-            className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
-          >
-            <UserCircle className="h-4 w-4" />
-            <span className="text-[9px] sm:text-xs">프로필</span>
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/influencer/campaigns')}
+          className="p-2"
+        >
+          <Briefcase className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/profile/edit')}
+          className="p-2"
+        >
+          <UserCircle className="h-5 w-5" />
+        </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleSignOut}
-          className="p-1.5 sm:p-2 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 h-auto"
+          className="p-2"
         >
-          <LogOut className="h-4 w-4" />
-          <span className="text-[9px] sm:text-xs">로그아웃</span>
+          <LogOut className="h-5 w-5" />
         </Button>
       </div>
     </div>

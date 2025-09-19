@@ -32,7 +32,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        {/* iOS 홈 화면 아이콘 - 여백 없는 버전 사용 */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="잇다" />
       </head>
       <body className={inter.className}>{children}</body>
     </html>
