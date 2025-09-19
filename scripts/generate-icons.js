@@ -8,17 +8,27 @@ async function generateIcons() {
   const inputPath = path.join(__dirname, '../public/logo.png')
   const outputDir = path.join(__dirname, '../public/icons')
 
-  // icons 폴더 생성
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true })
   }
 
-  // 각 사이즈별 아이콘 생성
+  // 각 사이즈별 아이콘 생성 (패딩 최소화)
   for (const size of sizes) {
+    // 로고를 95%까지 크게 (패딩 5%만)
+    const logoSize = Math.round(size * 0.95)
+    const padding = Math.round((size - logoSize) / 2)
+    
     await sharp(inputPath)
-      .resize(size, size, {
+      .resize(logoSize, logoSize, {
         fit: 'contain',
-        background: { r: 255, g: 255, b: 255, alpha: 0 }
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      })
+      .extend({
+        top: padding,
+        bottom: padding,
+        left: padding,
+        right: padding,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
       })
       .toFile(path.join(outputDir, `icon-${size}x${size}.png`))
     
