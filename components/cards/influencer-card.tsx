@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, MapPin, Users, TrendingUp } from 'lucide-react'
+import { Heart, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Influencer {
@@ -17,6 +17,7 @@ interface Influencer {
   location?: string
   is_verified?: boolean
   is_active?: boolean
+  hashtags?: string[]
 }
 
 const categoryColors: Record<string, string> = {
@@ -35,20 +36,24 @@ interface InfluencerCardProps {
   influencer: Influencer
   viewType?: 'advertiser' | 'influencer' | 'public'
   onClick?: () => void
+  onFavorite?: () => void  // 추가
+  isFavorited?: boolean     // 추가
 }
 
 export function InfluencerCard({ 
   influencer, 
   viewType = 'public',
-  onClick 
+  onClick,
+  onFavorite,              // 추가
+  isFavorited = false      // 추가
 }: InfluencerCardProps) {
   const router = useRouter()
   
   const formatFollowers = (count: number): string => {
     if (!count) return '0'
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
-    if (count >= 10000) return `${Math.floor(count / 1000)}K`
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
+    if (count >= 10000000) return `${Math.floor(count / 10000)}만`
+    if (count >= 10000) return `${(count / 10000).toFixed(0)}만`
+    if (count >= 1000) return `${Math.floor(count / 1000)}천`
     return count.toString()
   }
 
@@ -69,58 +74,84 @@ export function InfluencerCard({
       className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
       onClick={handleClick}
     >
-      {/* 이미지 영역 - 정사각형 또는 4:3 비율 선택 가능 */}
-      <div className="aspect-square relative bg-gray-100"> {/* aspect-[4/3] 도 가능 */}
+      {/* 이미지 영역 - 4:3 비율 */}
+      <div className="aspect-[4/3] relative bg-gray-100 overflow-hidden">
         <img
-          src={influencer.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(influencer.name)}&background=51a66f&color=fff&size=200&rounded=true`}
+          src={influencer.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(influencer.name)}&background=51a66f&color=fff&size=400&rounded=false`}
           alt={influencer.name}
           className="w-full h-full object-cover"
         />
         
-        {/* 카테고리 뱃지 - 좌측 하단 */}
+        {/* 하트 버튼 - 우측 상단 (onFavorite가 있을 때만 표시) */}
+        {onFavorite && (
+          <button 
+            className="absolute top-3 right-3 z-10 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all"
+            onClick={(e) => {
+              e.stopPropagation()
+              onFavorite()
+            }}
+            aria-label="찜하기"
+          >
+            <Heart 
+              className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} 
+            />
+          </button>
+        )}
+
+        {/* 카테고리 배지 - 좌측 하단 */}
         <Badge 
-          className={`absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5 ${categoryColors[influencer.category] || categoryColors['기타']}`}
+          className={`absolute bottom-3 left-3 z-10 text-xs px-2 py-1 ${categoryColors[influencer.category] || categoryColors['기타']}`}
         >
           {influencer.category || '미정'}
         </Badge>
-        
-        {/* 인증 마크 - 이름 옆으로 이동 (공간 절약) */}
       </div>
       
-      {/* 정보 영역 - 매우 컴팩트 */}
-      <CardContent className="p-2.5">
-        {/* 이름과 인증마크 */}
-        <div className="flex items-center gap-1 mb-1">
-          <h3 className="font-semibold text-sm truncate flex-1">
-            {influencer.name || '이름 미설정'}
-          </h3>
-          {influencer.is_verified && (
-            <CheckCircle className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-          )}
+      {/* 정보 영역 */}
+     {/* 정보 영역 */}
+      <CardContent className="p-3 space-y-2">
+        {/* 제목 및 인증 마크 - 한 줄에 표시 */}
+        <div>
+          <div className="flex items-center gap-0.5">
+            <h3 className="font-semibold text-base truncate">
+              {influencer.name || influencer.instagram_handle}
+            </h3>
+            {influencer.is_verified && (
+              <CheckCircle className="h-3.5 w-3.5 text-[#51a66f] flex-shrink-0 ml-0.5" />
+            )}
+          </div>
+          <p className="text-sm text-gray-500 truncate">
+            {influencer.location || '서울'}
+          </p>
         </div>
         
-        {/* 핸들과 위치를 한 줄로 */}
-        <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
-          <span className="truncate">@{influencer.instagram_handle}</span>
-          {influencer.location && (
-            <span className="flex items-center gap-0.5">
-              <MapPin className="h-2.5 w-2.5" />
-              {influencer.location}
-            </span>
-          )}
-        </div>
-        
-        {/* 통계 - 매우 간단하게 */}
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-0.5">
-            <Users className="h-3 w-3 text-gray-400" />
-            <strong>{formatFollowers(influencer.followers_count)}</strong>
+        {/* 통계 정보 */}
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-gray-600 flex-shrink-0">
+            팔로워 <span className="font-semibold text-gray-900">{formatFollowers(influencer.followers_count)}</span>
           </span>
-          <span className="flex items-center gap-0.5">
-            <TrendingUp className="h-3 w-3 text-gray-400" />
-            <strong>{influencer.engagement_rate || 0}%</strong>
+          <span className="text-gray-600 flex-shrink-0">
+            참여율 <span className="font-semibold text-gray-900">{influencer.engagement_rate}%</span>
           </span>
         </div>
+
+        {/* 해시태그 - 한 줄로 제한 */}
+        {influencer.hashtags && influencer.hashtags.length > 0 && (
+          <div className="flex items-center gap-1.5 pt-1 overflow-hidden text-[11px]">
+            {influencer.hashtags.slice(0, 2).map((tag, index) => (
+              <span 
+                key={index}
+                className="text-blue-600 flex-shrink-0 truncate max-w-[70px]"
+              >
+                #{tag}
+              </span>
+            ))}
+            {influencer.hashtags.length > 2 && (
+              <span className="text-blue-400 flex-shrink-0">
+                +{influencer.hashtags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
