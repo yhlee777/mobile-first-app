@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useSearchParams } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -64,6 +65,7 @@ function validateEmail(email: string): boolean {
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'influencer' | 'advertiser'>('influencer')
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -93,7 +95,14 @@ export default function SignupPage() {
   const [instagramValid, setInstagramValid] = useState<boolean | null>(null)
   const [emailValid, setEmailValid] = useState<boolean | null>(null)
   const [passwordStrength, setPasswordStrength] = useState<ReturnType<typeof checkPasswordStrength> | null>(null)
-
+    useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'advertiser') {
+      setActiveTab('advertiser')
+    } else if (tab === 'influencer') {
+      setActiveTab('influencer')
+    }
+  }, [searchParams])
   // Instagram 핸들 유효성 검사
   useEffect(() => {
     if (instagramHandle.length > 0) {
