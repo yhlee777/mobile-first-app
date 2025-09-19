@@ -81,84 +81,45 @@ export default function InfluencerDashboard() {
   const [categoryFilter, setCategoryFilter] = useState('전체')
   const [followerTier, setFollowerTier] = useState('전체')
   const [locationFilter, setLocationFilter] = useState('전체')
-  const [sortBy, setSortBy] = useState<'팔로워순' | '참여율순' | '최신순'>('팔로워순')
+  const [sortBy, setSortBy] = useState<'팔로워순' | '참여율순'>('팔로워순')
   const [showFilters, setShowFilters] = useState(false)
   
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    loadInfluencers()
-    checkCurrentUser()
+    loadInfluencersAndProfile()
   }, [])
 
-  useEffect(() => {
-    if (currentUser) {
-      calculateCompletion()
-    }
-  }, [currentUser])
-
-  const calculateCompletion = () => {
-    if (!currentUser) return
-    
-    let score = 0
-    const fields = [
-      { value: currentUser.name, weight: 20 },
-      { value: currentUser.instagram_handle, weight: 20 },
-      { value: currentUser.category, weight: 20 },
-      { value: currentUser.bio, weight: 20 },
-      { value: currentUser.profile_image, weight: 10 },
-      { value: (currentUser.followers_count || 0) > 0, weight: 5 },
-      { value: (currentUser.engagement_rate || 0) > 0, weight: 5 }
-    ]
-    
-    fields.forEach(field => {
-      if (field.value) score += field.weight
-    })
-    
-    const portfolioCount = currentUser.portfolio_urls?.length || 0
-    if (portfolioCount >= 3) {
-      score = Math.min(100, score + 10)
-    } else if (portfolioCount >= 1) {
-      score = Math.min(100, score + 5)
-    }
-    
-    setCompletionScore(Math.min(100, score))
-  }
-
-  const checkCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
-    
-    const { data } = await supabase
-      .from('influencers')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-    
-    if (data) {
-      setCurrentUser({
-        id: data.id,
-        name: data.name,
-        instagram_handle: data.instagram_handle,
-        bio: data.bio,
-        category: data.category,
-        location: data.location,
-        profile_image: data.profile_image,
-        portfolio_urls: data.portfolio_urls,
-        followers_count: data.followers_count,
-        engagement_rate: data.engagement_rate
-      })
-    }
-  }
-
-  const loadInfluencers = async () => {
+  const loadInfluencersAndProfile = async () => {
     try {
       setLoading(true)
       
+      // 현재 사용자 정보 로드
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('influencers')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+        
+        if (profileData) {
+          setCurrentUser(profileData)
+          
+          // 프로필 완성도 계산
+          let score = 0
+          if (profileData.name) score += 20
+          if (profileData.bio) score += 20
+          if (profileData.category) score += 20
+          if (profileData.location) score += 10
+          if (profileData.profile_image) score += 10
+          if (profileData.portfolio_urls?.length > 0) score += 20
+          setCompletionScore(score)
+        }
+      }
+      
+      // 모든 인플루언서 로드 (본인 제외)
       const { data, error } = await supabase
         .from('influencers')
         .select('*')
@@ -171,6 +132,7 @@ export default function InfluencerDashboard() {
       }
       
       if (data) {
+        // 현재 사용자 제외
         const filteredData = currentUser 
           ? data.filter(inf => inf.id !== currentUser.id)
           : data
@@ -273,134 +235,127 @@ export default function InfluencerDashboard() {
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="인플루언서 검색..."
-              className="pl-9 h-9 sm:h-10 text-sm"
+            <Input 
+              placeholder="이름으로 검색"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 h-9 text-sm"
             />
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 sm:h-10 px-3"
             onClick={() => setShowFilters(!showFilters)}
+            className="px-3 h-9"
           >
             <Filter className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">필터</span>
           </Button>
         </div>
 
-        {/* 프로필 완성도 - 인스타그램 스타일 */}
-        {!isProfileComplete && (
-          <div className="mt-3 p-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-semibold text-white">
-                    프로필 완성도
-                  </p>
-                  <span className="text-xs font-bold text-white">
-                    {completionScore}%
-                  </span>
-                </div>
-                <div className="w-full bg-white/30 rounded-full h-1.5">
-                  <div 
-                    className="bg-white h-1.5 rounded-full transition-all duration-700 shadow-sm"
-                    style={{ width: `${completionScore}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 정렬 버튼 */}
-        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
-          {(['팔로워순', '참여율순', '최신순'] as const).map((sort) => (
-            <Button
-              key={sort}
-              variant={sortBy === sort ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSortBy(sort)}
-              className={`h-8 text-xs whitespace-nowrap flex-shrink-0 ${
-                sortBy === sort ? 'brand-primary brand-primary-hover text-white' : ''
-              }`}
-            >
-              {sort}
-            </Button>
-          ))}
-        </div>
-
-        {/* 확장 필터 */}
+        {/* 필터 옵션 - 토글 방식 */}
         {showFilters && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">카테고리</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs mb-1.5 block">카테고리</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">팔로워</Label>
-              <Select value={followerTier} onValueChange={setFollowerTier}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {followerTiers.map(tier => (
-                    <SelectItem key={tier} value={tier}>{tier}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">지역</Label>
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map(loc => (
+                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">지역</Label>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map(location => (
-                    <SelectItem key={location} value={location}>{location}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">팔로워</Label>
+                <Select value={followerTier} onValueChange={setFollowerTier}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {followerTiers.map(tier => (
+                      <SelectItem key={tier} value={tier}>{tier}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex items-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full h-8 sm:h-9 text-xs sm:text-sm"
-                onClick={() => {
-                  setSearchTerm('')
-                  setCategoryFilter('전체')
-                  setFollowerTier('전체')
-                  setLocationFilter('전체')
-                  setSortBy('팔로워순')
-                }}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                초기화
-              </Button>
+              <div>
+                <Label className="text-xs mb-1.5 block">정렬</Label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="팔로워순">팔로워순</SelectItem>
+                    <SelectItem value="참여율순">참여율순</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 인플루언서 목록 */}
-      <main className="px-3 sm:px-4 py-4 sm:py-6">
+      {/* 프로필 완성도 알림 */}
+      {!isProfileComplete && (
+        <div className="px-3 sm:px-4 py-2 bg-amber-50 border-b border-amber-200">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs text-amber-800 font-medium">
+                프로필 완성도: {completionScore}%
+              </p>
+              <div className="w-full bg-amber-200 rounded-full h-1.5 mt-1">
+                <div className="bg-amber-600 h-1.5 rounded-full" style={{ width: `${completionScore}%` }} />
+              </div>
+            </div>
+            <Link href="/profile/edit">
+              <Button variant="outline" size="sm" className="ml-4 text-xs">
+                프로필 완성하기
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* 결과 카운트 */}
+      <div className="px-3 sm:px-4 py-2 bg-gray-50 border-b">
+        <div className="flex items-center justify-between">
+          <span className="text-xs sm:text-sm text-gray-600">
+            총 <span className="font-semibold text-gray-900">{filteredInfluencers.length}</span>명의 인플루언서
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => loadInfluencersAndProfile()}
+            className="text-xs p-1"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            새로고침
+          </Button>
+        </div>
+      </div>
+
+      {/* 인플루언서 그리드 */}
+      <main className="px-3 sm:px-4 py-4">
         {filteredInfluencers.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {filteredInfluencers.map((influencer) => (
@@ -412,7 +367,7 @@ export default function InfluencerDashboard() {
                 <CardContent className="p-0 flex flex-col h-full">
                   {/* 이미지 영역 - 고정 */}
                   <div className="relative">
-                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <div className="aspect-[4/5] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                       {influencer.profile_image ? (
                         <img 
                           src={influencer.profile_image} 
@@ -420,59 +375,52 @@ export default function InfluencerDashboard() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
+                        <Users className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
                       )}
                     </div>
 
-                    <div className="absolute bottom-2 left-2 z-10">
-                      <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
+                    <div className="absolute bottom-1.5 left-1.5 z-10">
+                      <Badge className={`text-[10px] px-1.5 py-0.5 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
                         {influencer.category || '미정'}
                       </Badge>
                     </div>
                   </div>
 
-                  {/* 정보 영역 - 고정 높이들 */}
-                  <div className="p-3 flex flex-col flex-1">
-                    {/* 이름 영역 - 고정 높이 */}
-                    <div className="h-6 flex items-center gap-1 mb-1">
+                  {/* 정보 영역 - 컴팩트하게 조정 */}
+                  <div className="p-2.5 flex flex-col flex-1">
+                    {/* 이름 영역 */}
+                    <div className="flex items-center gap-1 mb-1">
                       <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">
                         {influencer.name || '이름 미설정'}
                       </h3>
                       {influencer.is_verified && (
-                        <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                       )}
                     </div>
 
-                    {/* 인스타 아이디 영역 - 고정 높이 */}
-                    <div className="h-5 flex items-center mb-1">
-                      <span className="text-xs text-gray-500 truncate">
-                        @{influencer.instagram_handle}
-                      </span>
-                    </div>
-
-                    {/* 위치 영역 - 고정 높이 */}
-                    <div className="h-5 flex items-center gap-1 mb-2">
+                    {/* 위치 영역 */}
+                    <div className="flex items-center gap-1 mb-1.5">
                       {influencer.location ? (
                         <>
                           <MapPin className="h-3 w-3 text-gray-500 flex-shrink-0" />
                           <span className="text-xs text-gray-500 truncate">{influencer.location}</span>
                         </>
                       ) : (
-                        <span className="text-xs text-transparent">-</span>
+                        <span className="text-xs text-gray-400">위치 미설정</span>
                       )}
                     </div>
 
-                    {/* 팔로워/참여율 영역 - 고정 높이 */}
-                    <div className="h-10 flex items-center justify-between">
+                    {/* 팔로워/참여율 영역 */}
+                    <div className="flex items-center justify-between mt-auto">
                       <div>
-                        <span className="text-xs text-gray-500">팔로워</span>
-                        <div className="font-semibold text-gray-900 text-sm">
+                        <span className="text-[10px] text-gray-500 block">팔로워</span>
+                        <div className="font-semibold text-gray-900 text-xs">
                           {formatFollowers(influencer.followers_count)}
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-gray-500">참여율</span>
-                        <div className="font-semibold text-gray-900 text-sm">
+                        <span className="text-[10px] text-gray-500 block">참여율</span>
+                        <div className="font-semibold text-gray-900 text-xs">
                           {influencer.engagement_rate || 0}%
                         </div>
                       </div>
@@ -485,12 +433,8 @@ export default function InfluencerDashboard() {
         ) : (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">
-              {loading ? '로딩 중...' : '인플루언서가 없습니다'}
-            </p>
-            <p className="text-sm text-gray-400">
-              {!loading && '필터 조건을 변경해보세요'}
-            </p>
+            <p className="text-gray-500 text-lg mb-2">검색 결과가 없습니다</p>
+            <p className="text-sm text-gray-400">다른 검색 조건을 시도해보세요</p>
           </div>
         )}
       </main>

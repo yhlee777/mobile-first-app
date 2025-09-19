@@ -218,214 +218,210 @@ export default function AdvertiserDashboard() {
 
       {/* 검색 및 필터 섹션 */}
       <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b">
-        {/* 검색바와 필터 토글 */}
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="인플루언서 검색..."
-              className="pl-9 h-9 sm:h-10 text-sm"
+            <Input 
+              placeholder="이름으로 검색"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 h-9 text-sm"
             />
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 sm:h-10 px-3"
             onClick={() => setShowFilters(!showFilters)}
+            className="px-3 h-9"
           >
             <Filter className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">필터</span>
           </Button>
         </div>
 
-        {/* 정렬 및 찜한목록 버튼 */}
-        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
-          {(['팔로워순', '참여율순', '최신순', '찜한목록'] as SortType[]).map((sort) => (
-            <Button
-              key={sort}
-              variant={sortBy === sort ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSortBy(sort)}
-              className={`h-8 text-xs whitespace-nowrap flex-shrink-0 ${
-                sortBy === sort ? 'brand-primary brand-primary-hover text-white' : ''
-              }`}
-            >
-              {sort === '찜한목록' && <Heart className="h-3 w-3 mr-1" />}
-              {sort}
-            </Button>
-          ))}
-        </div>
-
-        {/* 확장 필터 */}
         {showFilters && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">카테고리</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs mb-1.5 block">카테고리</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {categories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">팔로워</Label>
-              <Select value={followerTier} onValueChange={setFollowerTier}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {followerTiers.map(tier => (
-                    <SelectItem key={tier} value={tier}>{tier}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">지역</Label>
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {locations.map(loc => (
+                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">지역</Label>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map(location => (
-                    <SelectItem key={location} value={location}>{location}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">팔로워</Label>
+                <Select value={followerTier} onValueChange={setFollowerTier}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {followerTiers.map(tier => (
+                        <SelectItem key={tier} value={tier}>{tier}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex items-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full h-8 sm:h-9 text-xs sm:text-sm"
-                onClick={() => {
-                  setSearchTerm('')
-                  setCategoryFilter('전체')
-                  setFollowerTier('전체')
-                  setLocationFilter('전체')
-                  setSortBy('팔로워순')
-                }}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                초기화
-              </Button>
+              <div>
+                <Label className="text-xs mb-1.5 block">정렬</Label>
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortType)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="팔로워순">팔로워순</SelectItem>
+                      <SelectItem value="참여율순">참여율순</SelectItem>
+                      <SelectItem value="최신순">최신순</SelectItem>
+                      <SelectItem value="찜한목록">찜한목록</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-{/* 인플루언서 목록 */}
-<main className="px-3 sm:px-4 py-4 sm:py-6">
-  {filteredInfluencers.length > 0 ? (
-    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-      {filteredInfluencers.map((influencer) => (
-        <Card 
-          key={influencer.id} 
-          className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] flex flex-col"
-          onClick={() => router.push(`/advertiser/influencer/${influencer.id}`)}
-        >
-          <CardContent className="p-0 flex flex-col h-full">
-            {/* 이미지 영역 - 고정 */}
-            <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                {influencer.profile_image ? (
-                  <img 
-                    src={influencer.profile_image} 
-                    alt={influencer.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
-                )}
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-10"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleFavorite(influencer.id)
-                }}
+      {/* 결과 카운트 */}
+      <div className="px-3 sm:px-4 py-2 bg-gray-50 border-b">
+        <div className="flex items-center justify-between">
+          <span className="text-xs sm:text-sm text-gray-600">
+            총 <span className="font-semibold text-gray-900">{filteredInfluencers.length}</span>명의 인플루언서
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => loadInfluencers()}
+            className="text-xs p-1"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            새로고침
+          </Button>
+        </div>
+      </div>
+
+      {/* 인플루언서 그리드 */}
+      <main className="px-3 sm:px-4 py-4">
+        {filteredInfluencers.length > 0 ? (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            {filteredInfluencers.map((influencer) => (
+              <Card 
+                key={influencer.id} 
+                className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] flex flex-col"
+                onClick={() => router.push(`/advertiser/influencer/${influencer.id}`)}
               >
-                <Heart 
-                  className={`h-4 w-4 ${
-                    favoriteIds.includes(influencer.id) 
-                      ? 'fill-red-500 text-red-500' 
-                      : 'text-gray-600'
-                  }`} 
-                />
-              </Button>
+                <CardContent className="p-0 flex flex-col h-full">
+                  {/* 이미지 영역 - 더 길게, object-contain 적용 */}
+                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 flex-[3]">
+  <div className="aspect-square flex items-center justify-center overflow-hidden">
+    {influencer.profile_image ? (
+      <img 
+        src={influencer.profile_image} 
+        alt={influencer.name}
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
+    )}
+  </div>
+  
+  <Button
+    variant="ghost"
+    size="sm"
+    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-10"
+    onClick={(e) => {
+      e.stopPropagation()
+      toggleFavorite(influencer.id)
+    }}
+  >
+    <Heart 
+      className={`h-3.5 w-3.5 ${
+        favoriteIds.includes(influencer.id) 
+          ? 'fill-red-500 text-red-500' 
+          : 'text-gray-600'
+      }`} 
+    />
+  </Button>
 
-              <div className="absolute bottom-2 left-2 z-10">
-                <Badge className={`text-xs px-2 py-1 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
-                  {influencer.category || '미정'}
-                </Badge>
-              </div>
-            </div>
+  <div className="absolute bottom-2 left-2 z-10">
+    <Badge className={`text-[10px] px-1.5 py-0.5 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
+      {influencer.category || '미정'}
+    </Badge>
+  </div>
+</div>
 
-            {/* 정보 영역 - 고정 높이들 */}
-            <div className="p-3 flex flex-col flex-1">
-              {/* 이름 영역 - 고정 높이 */}
-              <div className="h-6 flex items-center gap-1 mb-1">
-                <h3 className="font-semibold text-gray-900 text-sm truncate flex-1">
-                  {influencer.name || '이름 미설정'}
-                </h3>
-                {influencer.is_verified && (
-                  <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                )}
-              </div>
+                  {/* 정보 영역 - 더 컴팩트하게 */}
+                  <div className="p-2 flex flex-col flex-[1]">
+                    {/* 이름 영역 */}
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <h3 className="font-semibold text-gray-900 text-xs truncate flex-1">
+                        {influencer.name || '이름 미설정'}
+                      </h3>
+                      {influencer.is_verified && (
+                        <CheckCircle className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                      )}
+                    </div>
 
-              {/* 인스타 아이디 영역 - 고정 높이 */}
-              <div className="h-5 flex items-center mb-1">
-                <span className="text-xs text-gray-500 truncate">
-                  @{influencer.instagram_handle}
-                </span>
-              </div>
+                    {/* 위치 영역 - 더 작게 */}
+                    <div className="flex items-center gap-0.5 mb-1">
+                      {influencer.location ? (
+                        <>
+                          <MapPin className="h-2.5 w-2.5 text-gray-500 flex-shrink-0" />
+                          <span className="text-[10px] text-gray-500 truncate">{influencer.location}</span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">위치 미설정</span>
+                      )}
+                    </div>
 
-              {/* 위치 영역 - 고정 높이 */}
-              <div className="h-5 flex items-center gap-1 mb-2">
-                {influencer.location ? (
-                  <>
-                    <MapPin className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                    <span className="text-xs text-gray-500 truncate">{influencer.location}</span>
-                  </>
-                ) : (
-                  <span className="text-xs text-transparent">-</span>
-                )}
-              </div>
-
-              {/* 팔로워/참여율 영역 - 고정 높이 */}
-              <div className="h-10 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-gray-500">팔로워</span>
-                  <div className="font-semibold text-gray-900 text-sm">
-                    {formatFollowers(influencer.followers_count)}
+                    {/* 팔로워/참여율 영역 - 더 컴팩트 */}
+                    <div className="flex items-center justify-between mt-auto">
+                      <div>
+                        <span className="text-[9px] text-gray-500 block">팔로워</span>
+                        <div className="font-semibold text-gray-900 text-[10px]">
+                          {formatFollowers(influencer.followers_count)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-gray-500 block">참여율</span>
+                        <div className="font-semibold text-gray-900 text-[10px]">
+                          {influencer.engagement_rate || 0}%
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-gray-500">참여율</span>
-                  <div className="font-semibold text-gray-900 text-sm">
-                    {influencer.engagement_rate || 0}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
