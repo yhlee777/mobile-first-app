@@ -35,7 +35,27 @@ export default function BottomNav() {
         
         if (userData?.user_type) {
           setUserType(userData.user_type)
-          console.log('✅ User type:', userData.user_type)
+        } else {
+          // users 테이블에 없으면 각 테이블 확인
+          const { data: influencer } = await supabase
+            .from('influencers')
+            .select('id')
+            .eq('user_id', user.id)
+            .single()
+            
+          if (influencer) {
+            setUserType('influencer')
+          } else {
+            const { data: advertiser } = await supabase
+              .from('brands')
+              .select('id')
+              .eq('user_id', user.id)
+              .single()
+              
+            if (advertiser) {
+              setUserType('advertiser')
+            }
+          }
         }
       } else {
         setIsLoggedIn(false)
@@ -47,7 +67,7 @@ export default function BottomNav() {
     }
   }
 
-  const hideOnPaths = ['/login', '/signup', '/auth', '/onboarding', '/']
+  const hideOnPaths = ['/login', '/signup', '/']
   const shouldHide = loading || !isLoggedIn || hideOnPaths.some(path => pathname === path)
   
   if (shouldHide) {
@@ -59,48 +79,42 @@ export default function BottomNav() {
       label: '홈',
       icon: Home,
       onClick: () => {
-        console.log('🏠 홈 클릭, userType:', userType)
         if (userType === 'advertiser') {
-          router.push('/advertiser')
-        } else if (userType === 'influencer') {
-          router.push('/influencer/dashboard')
+          router.push('/advertiser/dashboard')
         } else {
-          router.push('/dashboard')
+          router.push('/influencer/dashboard')
         }
       },
       isActive: () => {
         if (userType === 'advertiser') {
-          return pathname.startsWith('/advertiser')
+          return pathname.startsWith('/advertiser/dashboard')
         }
-        if (userType === 'influencer') {
-          return pathname.startsWith('/influencer')
-        }
-        return pathname.startsWith('/dashboard')
+        return pathname.startsWith('/influencer/dashboard')
       }
     },
     {
       label: '캠페인',
       icon: Megaphone,
-      onClick: () => router.push('/campaigns'),
-      isActive: () => pathname.startsWith('/campaigns')
+      onClick: () => {
+        if (userType === 'advertiser') {
+          router.push('/advertiser/campaigns')
+        } else {
+          router.push('/influencer/campaigns')
+        }
+      },
+      isActive: () => pathname.includes('/campaigns')
     },
     {
       label: '내프로필',
       icon: UserCircle,
       onClick: () => {
-        console.log('👤 프로필 클릭, userType:', userType)
         if (userType === 'advertiser') {
           router.push('/advertiser/profile')
         } else {
-          router.push('/profile')
+          router.push('/influencer/profile')
         }
       },
-      isActive: () => {
-        if (userType === 'advertiser') {
-          return pathname.startsWith('/advertiser/profile')
-        }
-        return pathname.startsWith('/profile')
-      }
+      isActive: () => pathname.includes('/profile')
     }
   ]
 

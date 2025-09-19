@@ -67,6 +67,8 @@ function validateEmail(email: string): boolean {
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const supabase = createClient()
+  
   const [activeTab, setActiveTab] = useState<'influencer' | 'advertiser'>('influencer')
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -135,67 +137,44 @@ function SignupForm() {
     }
   }, [influencerPassword, advertiserPassword, activeTab])
 
-  // Instagram 데이터 동기화 함수
-  const syncInstagramData = async (handle: string, influencerId: string) => {
-    setSyncing(true)
-    try {
-      const response = await fetch('/api/ig/refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          handle: handle,
-          influencerId: influencerId
-        })
-      })
+  // Instagram 계정 동기화
+  const syncInstagramProfile = async () => {
+    if (!instagramHandle || !validateInstagramHandle(instagramHandle)) {
+      setError('올바른 Instagram 아이디를 입력해주세요')
+      return
+    }
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Instagram data synced:', data.metrics)
-        return data.metrics
+    setSyncing(true)
+    setError(null)
+    
+    try {
+      const response = await fetch('/api/ig/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: instagramHandle })
+      })
+      
+      const data = await response.json()
+      
+      if (data.error) {
+        setError(data.error)
+      } else {
+        setSuccessMessage('Instagram 프로필이 확인되었습니다!')
       }
     } catch (error) {
-      console.error('Instagram sync error:', error)
+      console.error('Sync error:', error)
+      setError('Instagram 계정을 확인할 수 없습니다. 아이디를 다시 확인해주세요.')
     } finally {
       setSyncing(false)
     }
-    return null
   }
 
-  // Instagram 데이터로 인플루언서 정보 업데이트
-  const updateInfluencerWithInstagramData = async (influencerId: string, metrics: any): Promise<void> => {
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('influencers')
-        .update({
-          name: metrics.name || instagramHandle,
-          followers_count: metrics.followers_count || 0,
-          engagement_rate: metrics.engagement_rate || 0,
-          is_verified: metrics.is_verified || false,
-          bio: metrics.bio || '',
-          profile_image: metrics.profile_picture_url || '',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', influencerId)
-      
-      if (error) {
-        console.error('Failed to update influencer data:', error)
-      } else {
-        console.log('Instagram data updated successfully')
-      }
-    } catch (err) {
-      console.error('Error updating influencer:', err)
-    }
-  };
-
+  // 인플루언서 회원가입
   const handleInfluencerSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // 유효성 검사
-    if (!instagramHandle || !validateInstagramHandle(instagramHandle)) {
-      setError('올바른 인스타그램 아이디를 입력해주세요 (영문, 숫자, _, . 만 가능)')
+    if (!instagramValid) {
+      setError('올바른 Instagram 아이디를 입력해주세요')
       return
     }
     
@@ -208,113 +187,48 @@ function SignupForm() {
       setError('비밀번호는 최소 6자 이상이어야 합니다')
       return
     }
-    
-    if (!termsAgreed || !privacyAgreed) {
-      setError('필수 약관에 동의해주세요')
-      return
-    }
-    
+
     setLoading(true)
     setError(null)
-    setSuccessMessage(null)
     
     try {
-      const supabase = createClient()
-      
-      const cleanHandle = instagramHandle.replace('@', '').toLowerCase().trim()
+      const cleanHandle = instagramHandle.replace('@', '')
       const tempEmail = `${cleanHandle}@instagram.temp`
       
-      // 1. 회원가입
+      // 1. Auth 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: tempEmail,
         password: influencerPassword,
-        options: {
-          data: {
-            instagram_handle: cleanHandle,
-            user_type: 'influencer'
-          }
-        }
       })
       
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          setError('이미 등록된 인스타그램 아이디입니다')
-        } else {
-          setError(authError.message)
-        }
-        setLoading(false)
-        return
-      }
+      if (authError) throw authError
+      if (!authData.user) throw new Error('회원가입에 실패했습니다')
       
-      if (!authData.user) {
-        throw new Error('회원가입에 실패했습니다')
-      }
-
       // 2. users 테이블에 추가
-      const { error: userError } = await supabase.from('users').insert([
-        {
-          user_id: authData.user.id,
-          user_type: 'influencer',
-          name: cleanHandle
-        }
-      ])
+      await supabase.from('users').insert({
+        id: authData.user.id,
+        user_type: 'influencer',
+        name: cleanHandle
+      })
       
-      if (userError) {
-        console.error('User insert error:', userError)
-      }
+      // 3. influencers 테이블에 추가
+      await supabase.from('influencers').insert({
+        user_id: authData.user.id,
+        instagram_handle: cleanHandle,
+        name: cleanHandle
+      })
       
-      // 3. influencers 테이블에 기본 정보 추가
-      const { data: influencerData, error: influencerError } = await supabase
-        .from('influencers')
-        .insert([
-          {
-            user_id: authData.user.id,
-            instagram_handle: cleanHandle,
-            name: cleanHandle,
-            bio: '',
-            category: '',
-            is_active: true,
-            created_at: new Date().toISOString()
-          }
-        ])
-        .select()
-        .single()
-      
-      if (influencerError) {
-        console.error('Influencer insert error:', influencerError)
-        throw influencerError
-      }
-      
-      // 4. 로그인
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      // 4. 자동 로그인
+      await supabase.auth.signInWithPassword({
         email: tempEmail,
         password: influencerPassword
       })
       
-      if (signInError) {
-        console.error('Sign in error:', signInError)
-      }
-      
-      // 5. 성공 메시지
-      setSuccessMessage('회원가입이 완료되었습니다! Instagram 데이터를 동기화하는 중...')
-      
-      // 6. Instagram 데이터 동기화 (백그라운드에서 실행)
-      if (influencerData && influencerData.id) {
-        console.log('Starting Instagram sync for:', cleanHandle);
-        
-        // 비동기로 실행하되 완료를 기다리지 않음
-        void (async () => {
-          const metrics = await syncInstagramData(cleanHandle, influencerData.id)
-          if (metrics) {
-            await updateInfluencerWithInstagramData(influencerData.id, metrics)
-          }
-        })()
-      }
-      
-      // 7. 2초 후 대시보드로 이동
+      // 5. 성공 메시지 후 홈으로 이동
+      setSuccessMessage('회원가입이 완료되었습니다! 홈으로 이동합니다...')
       setTimeout(() => {
         router.push('/dashboard')
-      }, 2000)
+      }, 1500)
       
     } catch (error: any) {
       setError(error.message || '회원가입 중 오류가 발생했습니다')
@@ -322,17 +236,12 @@ function SignupForm() {
     }
   }
 
+  // 광고주 회원가입
   const handleAdvertiserSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // 유효성 검사
-    if (!email || !validateEmail(email)) {
+    if (!emailValid) {
       setError('올바른 이메일 주소를 입력해주세요')
-      return
-    }
-    
-    if (!companyName || companyName.length < 2) {
-      setError('회사명을 2자 이상 입력해주세요')
       return
     }
     
@@ -345,88 +254,45 @@ function SignupForm() {
       setError('비밀번호는 최소 6자 이상이어야 합니다')
       return
     }
-    
-    if (!termsAgreed || !privacyAgreed) {
-      setError('필수 약관에 동의해주세요')
-      return
-    }
-    
+
     setLoading(true)
     setError(null)
-    setSuccessMessage(null)
     
     try {
-      const supabase = createClient()
-      
-      // 1. 회원가입
+      // 1. Auth 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: advertiserPassword,
-        options: {
-          data: {
-            company_name: companyName,
-            user_type: 'advertiser'
-          }
-        }
       })
       
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          setError('이미 등록된 이메일입니다')
-        } else {
-          setError(authError.message)
-        }
-        setLoading(false)
-        return
-      }
+      if (authError) throw authError
+      if (!authData.user) throw new Error('회원가입에 실패했습니다')
       
-      if (!authData.user) {
-        throw new Error('회원가입에 실패했습니다')
-      }
-
       // 2. users 테이블에 추가
-      const { error: userError } = await supabase.from('users').insert([
-        {
-          user_id: authData.user.id,
-          user_type: 'advertiser',
-          name: companyName
-        }
-      ])
-      
-      if (userError) {
-        console.error('User insert error:', userError)
-      }
+      await supabase.from('users').insert({
+        id: authData.user.id,
+        user_type: 'advertiser',
+        name: companyName
+      })
       
       // 3. brands 테이블에 추가
-      const { error: brandError } = await supabase.from('brands').insert([
-        {
-          user_id: authData.user.id,
-          name: companyName,
-          created_at: new Date().toISOString()
-        }
-      ])
+      await supabase.from('brands').insert({
+        user_id: authData.user.id,
+        name: companyName,
+        contact_email: email
+      })
       
-      if (brandError) {
-        console.error('Brand insert error:', brandError)
-      }
-      
-      // 4. 로그인
-      const { data: signInData } = await supabase.auth.signInWithPassword({
+      // 4. 자동 로그인
+      await supabase.auth.signInWithPassword({
         email: email,
         password: advertiserPassword
       })
       
-      // 5. 성공 메시지
-      setSuccessMessage('회원가입이 완료되었습니다! 잠시 후 대시보드로 이동합니다...')
-      
-      // 6. 2초 후 대시보드로 이동
+      // 5. 성공 메시지 후 홈으로 이동
+      setSuccessMessage('회원가입이 완료되었습니다! 홈으로 이동합니다...')
       setTimeout(() => {
-        if (signInData?.user) {
-          router.push('/advertiser')
-        } else {
-          router.push('/login')
-        }
-      }, 2000)
+        router.push('/advertiser')
+      }, 1500)
       
     } catch (error: any) {
       setError(error.message || '회원가입 중 오류가 발생했습니다')
@@ -475,37 +341,43 @@ function SignupForm() {
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  {error}
-                </div>
-              )}
-              
-              {successMessage && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  {successMessage}
+                  <span>{error}</span>
                 </div>
               )}
 
+              {successMessage && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              {/* 인플루언서 탭 */}
               <TabsContent value="influencer">
                 <form onSubmit={handleInfluencerSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="instagram-handle">인스타그램 아이디</Label>
+                    <Label htmlFor="instagram">
+                      Instagram 아이디 *
+                      {syncing && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          <RefreshCw className="inline h-3 w-3 animate-spin" /> 확인 중...
+                        </span>
+                      )}
+                    </Label>
                     <div className="relative">
-                      <Input 
-                        id="instagram-handle"
-                        type="text" 
-                        placeholder="@없이 입력 (예: myinstagram)"
+                      <Input
+                        id="instagram"
+                        placeholder="@username"
                         value={instagramHandle}
-                        onChange={(e) => setInstagramHandle(e.target.value.replace('@', '').toLowerCase())}
-                        className={`pr-10 ${
-                          instagramValid === true ? 'border-green-500' : 
-                          instagramValid === false ? 'border-red-500' : ''
-                        }`}
-                        disabled={loading}
-                        required
+                        onChange={(e) => setInstagramHandle(e.target.value)}
+                        disabled={loading || syncing}
+                        className={
+                          instagramValid === false ? 'border-red-500' : 
+                          instagramValid === true ? 'border-green-500' : ''
+                        }
                       />
                       {instagramValid !== null && (
-                        <div className="absolute right-3 top-3">
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
                           {instagramValid ? (
                             <Check className="h-4 w-4 text-green-500" />
                           ) : (
@@ -516,34 +388,46 @@ function SignupForm() {
                     </div>
                     {instagramValid === false && (
                       <p className="text-xs text-red-500">
-                        3-30자의 영문, 숫자, _, . 만 사용 가능합니다
+                        Instagram 아이디는 영문, 숫자, _, . 만 사용 가능합니다 (3-30자)
                       </p>
                     )}
-                    {instagramValid === true && (
-                      <p className="text-xs text-green-600 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        Instagram 프로필이 자동으로 동기화됩니다
-                      </p>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={syncInstagramProfile}
+                      disabled={!instagramValid || syncing || loading}
+                      className="w-full"
+                    >
+                      {syncing ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                          확인 중...
+                        </>
+                      ) : (
+                        <>
+                          <Instagram className="h-3 w-3 mr-2" />
+                          Instagram 계정 확인
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="influencer-password">비밀번호</Label>
+                    <Label htmlFor="influencer-password">비밀번호 *</Label>
                     <div className="relative">
-                      <Input 
+                      <Input
                         id="influencer-password"
                         type={showInfluencerPassword ? "text" : "password"}
-                        placeholder="6자 이상 입력"
+                        placeholder="최소 6자 이상"
                         value={influencerPassword}
                         onChange={(e) => setInfluencerPassword(e.target.value)}
-                        className="pr-10"
                         disabled={loading}
-                        required
                       />
                       <button
                         type="button"
                         onClick={() => setShowInfluencerPassword(!showInfluencerPassword)}
-                        className="absolute right-3 top-3"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
                       >
                         {showInfluencerPassword ? (
                           <EyeOff className="h-4 w-4 text-gray-400" />
@@ -555,44 +439,39 @@ function SignupForm() {
                     {passwordStrength && activeTab === 'influencer' && (
                       <div className="space-y-1">
                         <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5, 6].map((i) => (
+                          {[1, 2, 3, 4, 5, 6].map((level) => (
                             <div
-                              key={i}
+                              key={level}
                               className={`h-1 flex-1 rounded-full ${
-                                i <= passwordStrength.score
+                                level <= passwordStrength.score
                                   ? passwordStrength.color
                                   : 'bg-gray-200'
                               }`}
                             />
                           ))}
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-500">
                           비밀번호 강도: {passwordStrength.message}
                         </p>
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="influencer-password-confirm">비밀번호 확인</Label>
+                    <Label htmlFor="influencer-password-confirm">비밀번호 확인 *</Label>
                     <div className="relative">
-                      <Input 
+                      <Input
                         id="influencer-password-confirm"
                         type={showInfluencerPasswordConfirm ? "text" : "password"}
-                        placeholder="비밀번호 재입력"
+                        placeholder="비밀번호를 다시 입력해주세요"
                         value={influencerPasswordConfirm}
                         onChange={(e) => setInfluencerPasswordConfirm(e.target.value)}
-                        className={`pr-10 ${
-                          influencerPasswordConfirm && 
-                          (influencerPassword === influencerPasswordConfirm ? 'border-green-500' : 'border-red-500')
-                        }`}
                         disabled={loading}
-                        required
                       />
                       <button
                         type="button"
                         onClick={() => setShowInfluencerPasswordConfirm(!showInfluencerPasswordConfirm)}
-                        className="absolute right-3 top-3"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
                       >
                         {showInfluencerPasswordConfirm ? (
                           <EyeOff className="h-4 w-4 text-gray-400" />
@@ -624,7 +503,7 @@ function SignupForm() {
                         disabled={loading}
                       />
                       <span className="text-sm text-gray-600">
-                        <Link href="/terms" className="text-green-600 hover:underline">이용약관</Link>에 동의합니다 (필수)
+                        이용약관에 동의합니다 (필수)
                       </span>
                     </label>
                     <label className="flex items-start gap-2 cursor-pointer">
@@ -636,7 +515,7 @@ function SignupForm() {
                         disabled={loading}
                       />
                       <span className="text-sm text-gray-600">
-                        <Link href="/privacy" className="text-green-600 hover:underline">개인정보처리방침</Link>에 동의합니다 (필수)
+                        개인정보처리방침에 동의합니다 (필수)
                       </span>
                     </label>
                   </div>
@@ -651,14 +530,9 @@ function SignupForm() {
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         가입 중...
                       </>
-                    ) : syncing ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Instagram 동기화 중...
-                      </>
                     ) : (
                       <>
-                        <CheckCircle className="h-4 w-4 mr-2" />
+                        <Instagram className="h-4 w-4 mr-2" />
                         인플루언서로 시작하기
                       </>
                     )}
@@ -666,26 +540,26 @@ function SignupForm() {
                 </form>
               </TabsContent>
 
+              {/* 광고주 탭 */}
               <TabsContent value="advertiser">
                 <form onSubmit={handleAdvertiserSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">이메일</Label>
+                    <Label htmlFor="email">이메일 *</Label>
                     <div className="relative">
-                      <Input 
+                      <Input
                         id="email"
-                        type="email" 
+                        type="email"
                         placeholder="your@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`pr-10 ${
-                          emailValid === true ? 'border-green-500' : 
-                          emailValid === false ? 'border-red-500' : ''
-                        }`}
                         disabled={loading}
-                        required
+                        className={
+                          emailValid === false ? 'border-red-500' : 
+                          emailValid === true ? 'border-green-500' : ''
+                        }
                       />
                       {emailValid !== null && (
-                        <div className="absolute right-3 top-3">
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
                           {emailValid ? (
                             <Check className="h-4 w-4 text-green-500" />
                           ) : (
@@ -695,42 +569,36 @@ function SignupForm() {
                       )}
                     </div>
                     {emailValid === false && (
-                      <p className="text-xs text-red-500">
-                        올바른 이메일 형식을 입력해주세요
-                      </p>
+                      <p className="text-xs text-red-500">올바른 이메일 형식이 아닙니다</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="company-name">회사명</Label>
-                    <Input 
-                      id="company-name"
-                      type="text" 
-                      placeholder="회사명 입력"
+                    <Label htmlFor="company">회사/브랜드명 *</Label>
+                    <Input
+                      id="company"
+                      placeholder="회사 또는 브랜드명"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       disabled={loading}
-                      required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="advertiser-password">비밀번호</Label>
+                    <Label htmlFor="advertiser-password">비밀번호 *</Label>
                     <div className="relative">
-                      <Input 
+                      <Input
                         id="advertiser-password"
                         type={showAdvertiserPassword ? "text" : "password"}
-                        placeholder="6자 이상 입력"
+                        placeholder="최소 6자 이상"
                         value={advertiserPassword}
                         onChange={(e) => setAdvertiserPassword(e.target.value)}
-                        className="pr-10"
                         disabled={loading}
-                        required
                       />
                       <button
                         type="button"
                         onClick={() => setShowAdvertiserPassword(!showAdvertiserPassword)}
-                        className="absolute right-3 top-3"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
                       >
                         {showAdvertiserPassword ? (
                           <EyeOff className="h-4 w-4 text-gray-400" />
@@ -742,44 +610,39 @@ function SignupForm() {
                     {passwordStrength && activeTab === 'advertiser' && (
                       <div className="space-y-1">
                         <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5, 6].map((i) => (
+                          {[1, 2, 3, 4, 5, 6].map((level) => (
                             <div
-                              key={i}
+                              key={level}
                               className={`h-1 flex-1 rounded-full ${
-                                i <= passwordStrength.score
+                                level <= passwordStrength.score
                                   ? passwordStrength.color
                                   : 'bg-gray-200'
                               }`}
                             />
                           ))}
                         </div>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-500">
                           비밀번호 강도: {passwordStrength.message}
                         </p>
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="advertiser-password-confirm">비밀번호 확인</Label>
+                    <Label htmlFor="advertiser-password-confirm">비밀번호 확인 *</Label>
                     <div className="relative">
-                      <Input 
+                      <Input
                         id="advertiser-password-confirm"
                         type={showAdvertiserPasswordConfirm ? "text" : "password"}
-                        placeholder="비밀번호 재입력"
+                        placeholder="비밀번호를 다시 입력해주세요"
                         value={advertiserPasswordConfirm}
                         onChange={(e) => setAdvertiserPasswordConfirm(e.target.value)}
-                        className={`pr-10 ${
-                          advertiserPasswordConfirm && 
-                          (advertiserPassword === advertiserPasswordConfirm ? 'border-green-500' : 'border-red-500')
-                        }`}
                         disabled={loading}
-                        required
                       />
                       <button
                         type="button"
                         onClick={() => setShowAdvertiserPasswordConfirm(!showAdvertiserPasswordConfirm)}
-                        className="absolute right-3 top-3"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
                       >
                         {showAdvertiserPasswordConfirm ? (
                           <EyeOff className="h-4 w-4 text-gray-400" />
@@ -811,7 +674,7 @@ function SignupForm() {
                         disabled={loading}
                       />
                       <span className="text-sm text-gray-600">
-                        <Link href="/terms" className="text-green-600 hover:underline">이용약관</Link>에 동의합니다 (필수)
+                        이용약관에 동의합니다 (필수)
                       </span>
                     </label>
                     <label className="flex items-start gap-2 cursor-pointer">
@@ -823,7 +686,7 @@ function SignupForm() {
                         disabled={loading}
                       />
                       <span className="text-sm text-gray-600">
-                        <Link href="/privacy" className="text-green-600 hover:underline">개인정보처리방침</Link>에 동의합니다 (필수)
+                        개인정보처리방침에 동의합니다 (필수)
                       </span>
                     </label>
                   </div>
@@ -858,29 +721,22 @@ function SignupForm() {
                 className="w-full"
                 onClick={() => router.push('/login')}
               >
-                로그인하기
+                로그인
               </Button>
             </div>
           </CardContent>
         </Card>
-
-        <div className="mt-4 text-center text-xs text-gray-500">
-          가입 시 서비스 이용에 동의하는 것으로 간주됩니다
-        </div>
       </div>
     </div>
   )
 }
 
-// 메인 컴포넌트 - Suspense로 감싸기
+// 메인 컴포넌트
 export default function SignupPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600 mx-auto" />
-          <p className="mt-2 text-gray-600">로딩중...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
       </div>
     }>
       <SignupForm />

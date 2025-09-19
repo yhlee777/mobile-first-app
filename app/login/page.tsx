@@ -50,6 +50,28 @@ export default function LoginPage() {
       }
 
       if (authData.user) {
+        console.log('로그인 성공, 사용자 ID:', authData.user.id)
+        
+        // 1. 먼저 users 테이블에서 user_type 확인
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('user_type')
+          .eq('id', authData.user.id)
+          .single()
+
+        if (userData && userData.user_type) {
+          console.log('users 테이블에서 user_type 확인:', userData.user_type)
+          
+          if (userData.user_type === 'influencer') {
+            router.push('/influencer/dashboard')
+            return
+          } else if (userData.user_type === 'advertiser') {
+            router.push('/advertiser/dashboard')
+            return
+          }
+        }
+        
+        // 2. users 테이블에 없으면 influencers 테이블 확인
         const { data: influencerData, error: influencerError } = await supabase
           .from('influencers')
           .select('id, user_id')
@@ -57,10 +79,23 @@ export default function LoginPage() {
           .single()
 
         if (influencerData && !influencerError) {
-          router.push('/dashboard')
+          console.log('인플루언서로 확인됨')
+          
+          // users 테이블에 user_type 업데이트
+          await supabase
+            .from('users')
+            .upsert({
+              id: authData.user.id,
+              user_type: 'influencer',
+              name: identifier,
+              updated_at: new Date().toISOString()
+            })
+          
+          router.push('/influencer/dashboard')
           return
         }
 
+        // 3. advertisers 또는 brands 테이블 확인
         const { data: advertiserData, error: advertiserError } = await supabase
           .from('advertisers')
           .select('id, user_id')
@@ -68,12 +103,53 @@ export default function LoginPage() {
           .single()
 
         if (advertiserData && !advertiserError) {
-          router.push('/advertiser')
+          console.log('광고주(advertisers)로 확인됨')
+          
+          // users 테이블에 user_type 업데이트
+          await supabase
+            .from('users')
+            .upsert({
+              id: authData.user.id,
+              user_type: 'advertiser',
+              name: identifier,
+              updated_at: new Date().toISOString()
+            })
+          
+          router.push('/advertiser/dashboard')
           return
         }
+        
+        // 4. brands 테이블도 확인
+      // 4. brands 테이블도 확인 부분을 수정
+const { data: brandData, error: brandError } = await supabase
+  .from('brands')
+  .select('id, user_id, name')  // name 추가
+  .eq('user_id', authData.user.id)
+  .single()
 
-        console.log('사용자 타입을 확인할 수 없습니다. 기본 페이지로 이동합니다.')
-        router.push('/advertiser')
+if (brandData && !brandError) {
+  console.log('광고주(brands)로 확인됨')
+  
+  // users 테이블에 user_type 업데이트
+  await supabase
+    .from('users')
+    .upsert({
+      id: authData.user.id,
+      user_type: 'advertiser',
+      name: brandData.name || identifier,
+      updated_at: new Date().toISOString()
+    })
+  
+  router.push('/advertiser/dashboard')
+  return
+}
+
+        // 5. 어떤 테이블에서도 찾을 수 없는 경우
+        console.log('⚠️ 사용자 타입을 확인할 수 없습니다')
+        console.log('다음 테이블을 확인했습니다: users, influencers, advertisers, brands')
+        
+        // 기본값으로 인플루언서 대시보드로 이동
+        router.push('/influencer/dashboard')
       }
       
     } catch (error: any) {
@@ -92,92 +168,61 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8" style={{ zoom: 'reset' }}>
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="mb-6 sm:mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white p-4">
+      <div className="w-full max-w-md">
+        <div className="mb-4">
           <Button
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-0"
           >
             <ArrowLeft className="h-4 w-4" />
-            돌아가기
+            처음으로
           </Button>
         </div>
 
-        <Card className="shadow-lg border-0">
-          <CardHeader className="text-center space-y-2 pb-4">
-            <CardTitle className="text-2xl font-bold brand-primary-text">로그인</CardTitle>
-            <CardDescription className="text-gray-600">
-              계정에 로그인하여 파트너를 만나보세요
+        <Card className="shadow-xl">
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-2xl font-bold">로그인</CardTitle>
+            <CardDescription>
+              계정에 로그인하여 서비스를 이용하세요
             </CardDescription>
           </CardHeader>
-          
-          <CardContent className="space-y-4 sm:space-y-6">
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                {error}
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="identifier">아이디</Label>
+                <Input
+                  id="identifier"
+                  placeholder="이메일 또는 Instagram 아이디"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  disabled={loading}
+                />
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              <div>
-                <Label htmlFor="identifier">이메일 또는 인스타그램 ID</Label>
-                <div className="mt-1">
-                  <Input
-                    id="identifier"
-                    type="text"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="이메일 또는 @없이 인스타그램 ID"
-                    className="h-11 sm:h-12 text-base"
-                    disabled={loading}
-                    autoComplete="username"
-                  />
-                </div>
-              </div>
-
-              <div>
+              
+              <div className="space-y-2">
                 <Label htmlFor="password">비밀번호</Label>
-                <div className="mt-1">
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="비밀번호를 입력하세요"
-                    className="h-11 sm:h-12 text-base"
-                    disabled={loading}
-                    autoComplete="current-password"
-                  />
-                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 brand-primary-text focus:ring-2 border-gray-300 rounded"
-                    style={{ accentColor: '#51a66f' }}
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                    로그인 상태 유지
-                  </label>
+              
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{error}</p>
                 </div>
-
-                <div className="text-sm">
-                  <a href="#" className="font-medium brand-primary-text hover:opacity-80">
-                    비밀번호 찾기
-                  </a>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full brand-primary brand-primary-hover text-white h-11 sm:h-12 text-base" 
+              )}
+              
+              <Button
+                type="submit"
                 disabled={loading}
+                className="w-full bg-green-600 hover:bg-green-700"
               >
                 {loading ? (
                   <>
@@ -190,23 +235,14 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">계정이 없으신가요?</span>
-              </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                계정이 없으신가요?{' '}
+                <Link href="/signup" className="text-green-600 hover:text-green-700 font-medium">
+                  회원가입
+                </Link>
+              </p>
             </div>
-
-            <Link href="/signup" passHref>
-              <Button 
-                variant="outline" 
-                className="w-full h-11 sm:h-12 text-base border-2 hover:bg-green-50 hover:border-green-600 hover:text-green-600 transition-colors"
-              >
-                회원가입
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       </div>
