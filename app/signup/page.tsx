@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { useSearchParams } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -63,7 +63,8 @@ function validateEmail(email: string): boolean {
   return regex.test(email)
 }
 
-export default function SignupPage() {
+// SignupForm 컴포넌트 (searchParams 사용)
+function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'influencer' | 'advertiser'>('influencer')
@@ -95,7 +96,9 @@ export default function SignupPage() {
   const [instagramValid, setInstagramValid] = useState<boolean | null>(null)
   const [emailValid, setEmailValid] = useState<boolean | null>(null)
   const [passwordStrength, setPasswordStrength] = useState<ReturnType<typeof checkPasswordStrength> | null>(null)
-    useEffect(() => {
+
+  // URL 파라미터로 탭 자동 설정
+  useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab === 'advertiser') {
       setActiveTab('advertiser')
@@ -103,6 +106,7 @@ export default function SignupPage() {
       setActiveTab('influencer')
     }
   }, [searchParams])
+
   // Instagram 핸들 유효성 검사
   useEffect(() => {
     if (instagramHandle.length > 0) {
@@ -238,6 +242,7 @@ export default function SignupPage() {
         } else {
           setError(authError.message)
         }
+        setLoading(false)
         return
       }
       
@@ -248,10 +253,9 @@ export default function SignupPage() {
       // 2. users 테이블에 추가
       const { error: userError } = await supabase.from('users').insert([
         {
-          id: authData.user.id,
+          user_id: authData.user.id,
           user_type: 'influencer',
-          email: tempEmail,
-          instagram_handle: cleanHandle
+          name: cleanHandle
         }
       ])
       
@@ -372,6 +376,7 @@ export default function SignupPage() {
         } else {
           setError(authError.message)
         }
+        setLoading(false)
         return
       }
       
@@ -382,9 +387,9 @@ export default function SignupPage() {
       // 2. users 테이블에 추가
       const { error: userError } = await supabase.from('users').insert([
         {
-          id: authData.user.id,
+          user_id: authData.user.id,
           user_type: 'advertiser',
-          email: email
+          name: companyName
         }
       ])
       
@@ -392,18 +397,17 @@ export default function SignupPage() {
         console.error('User insert error:', userError)
       }
       
-      // 3. advertisers 테이블에 추가
-      const { error: advertiserError } = await supabase.from('advertisers').insert([
+      // 3. brands 테이블에 추가
+      const { error: brandError } = await supabase.from('brands').insert([
         {
           user_id: authData.user.id,
-          company_name: companyName,
-          is_active: true,
+          name: companyName,
           created_at: new Date().toISOString()
         }
       ])
       
-      if (advertiserError) {
-        console.error('Advertiser insert error:', advertiserError)
+      if (brandError) {
+        console.error('Brand insert error:', brandError)
       }
       
       // 4. 로그인
@@ -865,5 +869,21 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// 메인 컴포넌트 - Suspense로 감싸기
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-green-600 mx-auto" />
+          <p className="mt-2 text-gray-600">로딩중...</p>
+        </div>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   )
 }
