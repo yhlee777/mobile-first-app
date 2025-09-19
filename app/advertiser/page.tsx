@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent } from '@/components/ui/card'
+import { InfluencerCard } from '@/components/cards/influencer-card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { NotificationBell } from '@/components/notifications/notification-bell'
 import {
   Select,
   SelectContent,
@@ -16,28 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatNumber } from '@/lib/utils'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   Search, 
   Filter, 
   Heart, 
-  LogOut,
-  Eye,
-  CheckCircle,
-  MapPin,
+  Bell,
   Users,
   RefreshCw,
-  Menu,
-  Star,
-  Award,
-  TrendingUp,
-  Clock,
-  ArrowRight,
-  Loader2
+  Loader2,
+  LogOut
 } from 'lucide-react'
-import { Store, Briefcase } from 'lucide-react'
+
 interface Influencer {
   id: string
   instagram_handle: string
@@ -50,20 +39,8 @@ interface Influencer {
   location?: string
   avg_views?: number
   is_verified?: boolean
+  is_active?: boolean
   created_at?: string
-}
-
-// 카테고리별 색상 매핑
-const categoryColors: Record<string, string> = {
-  '패션': 'bg-pink-100 text-pink-700 border-pink-200',
-  '뷰티': 'bg-purple-100 text-purple-700 border-purple-200',
-  '음식': 'bg-orange-100 text-orange-700 border-orange-200',
-  '여행': 'bg-blue-100 text-blue-700 border-blue-200',
-  '피트니스': 'bg-green-100 text-green-700 border-green-200',
-  '테크': 'bg-slate-100 text-slate-700 border-slate-200',
-  '라이프스타일': 'bg-amber-100 text-amber-700 border-amber-200',
-  '육아': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  '기타': 'bg-gray-100 text-gray-700 border-gray-200'
 }
 
 const categories = ['전체', '패션', '뷰티', '음식', '여행', '피트니스', '테크', '라이프스타일', '육아', '기타']
@@ -82,12 +59,15 @@ export default function AdvertiserDashboard() {
   const [sortBy, setSortBy] = useState<SortType>('팔로워순')
   const [showFilters, setShowFilters] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
+  const [notificationCount, setNotificationCount] = useState(0)
   
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     loadInfluencers()
+    loadFavorites()
+    loadNotificationCount()
   }, [])
 
   const loadInfluencers = async () => {
@@ -115,38 +95,65 @@ export default function AdvertiserDashboard() {
     }
   }
 
-  // 로그아웃 처리
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push('/')
-    } catch (error) {
-      console.error('로그아웃 오류:', error)
+  const loadFavorites = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase
+      .from('wishlists')
+      .select('influencer_id')
+      .eq('brand_id', user.id)
+    
+    if (data) {
+      setFavoriteIds(data.map(item => item.influencer_id))
     }
   }
 
-  // 팔로워 수 포맷팅 함수
-  const formatFollowers = (count: number): string => {
-    if (!count) return '0'
-    if (count >= 10000000) return `${Math.floor(count / 1000000)}M`
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
-    if (count >= 10000) return `${Math.floor(count / 1000)}K`
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
-    return count.toString()
+  const loadNotificationCount = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false)
+    
+    setNotificationCount(count || 0)
   }
 
-  // 찜하기 토글
-  const toggleFavorite = (id: string) => {
-    setFavoriteIds(prev => 
-      prev.includes(id) 
-        ? prev.filter(fId => fId !== id)
-        : [...prev, id]
-    )
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
   }
 
-  // 정렬/필터링된 인플루언서 목록
+  const toggleFavorite = async (influencerId: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const isFavorited = favoriteIds.includes(influencerId)
+    
+    if (isFavorited) {
+      await supabase
+        .from('wishlists')
+        .delete()
+        .eq('brand_id', user.id)
+        .eq('influencer_id', influencerId)
+      
+      setFavoriteIds(prev => prev.filter(id => id !== influencerId))
+    } else {
+      await supabase
+        .from('wishlists')
+        .insert({
+          brand_id: user.id,
+          influencer_id: influencerId
+        })
+      
+      setFavoriteIds(prev => [...prev, influencerId])
+    }
+  }
+
   const filteredInfluencers = influencers.filter(influencer => {
-    // 찜한목록 필터
     if (sortBy === '찜한목록' && !favoriteIds.includes(influencer.id)) {
       return false
     }
@@ -155,7 +162,6 @@ export default function AdvertiserDashboard() {
                          influencer.instagram_handle?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesCategory = categoryFilter === '전체' || influencer.category === categoryFilter
-    
     const matchesLocation = locationFilter === '전체' || influencer.location === locationFilter
     
     const matchesFollowerTier = (() => {
@@ -188,7 +194,7 @@ export default function AdvertiserDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
           <p className="text-gray-500">인플루언서 목록을 불러오는 중...</p>
         </div>
       </div>
@@ -196,71 +202,128 @@ export default function AdvertiserDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
-      {/* 상단 헤더 */}
-     {/* 상단 헤더 */}
-<header className="bg-white border-b sticky top-0 z-40">
-  <div className="px-3 sm:px-4 py-3">
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-lg sm:text-xl font-bold text-gray-900">광고주 대시보드</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">인플루언서를 찾아보세요</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <NotificationBell />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/advertiser/campaigns')}
-          className="p-2"
-        >
-          <Briefcase className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/advertiser/profile')}
-          className="p-2"
-        >
-          <Store className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
-          className="p-2"
-        >
-          <LogOut className="h-5 w-5" />
-        </Button>
-      </div>
-    </div>
-  </div>
-</header>
+    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white pb-20 md:pb-0 md:pl-64">
+      {/* 모바일 헤더 */}
+      <header className="sticky top-0 z-40 bg-white border-b md:hidden">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-[#51a66f]">Itda</h1>
+            <div className="flex items-center gap-2">
+              {/* 알림 버튼 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/notifications')}
+                className="relative p-2"
+              >
+                <Bell className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-0.5 -right-0.5 h-5 w-5 p-0 flex items-center justify-center bg-red-500 border-0">
+                    <span className="text-[10px] text-white">
+                      {notificationCount > 9 ? '9+' : notificationCount}
+                    </span>
+                  </Badge>
+                )}
+              </Button>
+              
+              {/* 찜목록 버튼 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSortBy('찜한목록')}
+                className="relative p-2"
+              >
+                <Heart className={`h-5 w-5 ${sortBy === '찜한목록' ? 'fill-red-500 text-red-500' : ''}`} />
+                {favoriteIds.length > 0 && (
+                  <Badge className="absolute -top-0.5 -right-0.5 h-5 w-5 p-0 flex items-center justify-center bg-[#51a66f] border-0">
+                    <span className="text-[10px] text-white">
+                      {favoriteIds.length}
+                    </span>
+                  </Badge>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* 데스크탑 헤더 */}
+      <header className="hidden md:block sticky top-0 z-30 bg-white border-b">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">인플루언서 찾기</h2>
+            <div className="flex items-center gap-3">
+              {/* 알림 버튼 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/notifications')}
+                className="relative"
+              >
+                <Bell className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-red-500 border-0">
+                    <span className="text-[9px] text-white">
+                      {notificationCount}
+                    </span>
+                  </Badge>
+                )}
+              </Button>
+              
+              {/* 찜목록 버튼 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSortBy('찜한목록')}
+                className="relative"
+              >
+                <Heart className={`h-5 w-5 ${sortBy === '찜한목록' ? 'fill-red-500 text-red-500' : ''}`} />
+                {favoriteIds.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-[#51a66f] border-0">
+                    <span className="text-[9px] text-white">
+                      {favoriteIds.length}
+                    </span>
+                  </Badge>
+                )}
+              </Button>
+
+              {/* 로그아웃 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* 검색 및 필터 섹션 */}
-      <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white border-b">
+      <div className="px-4 md:px-6 py-3 bg-white border-b">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
-              placeholder="이름으로 검색"
+              placeholder="이름 또는 @핸들로 검색"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 h-9 text-sm"
+              className="pl-9"
             />
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="px-3 h-9"
           >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
 
         {showFilters && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <Label className="text-xs mb-1.5 block">카테고리</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -331,16 +394,21 @@ export default function AdvertiserDashboard() {
       </div>
 
       {/* 결과 카운트 */}
-      <div className="px-3 sm:px-4 py-2 bg-gray-50 border-b">
+      <div className="px-4 md:px-6 py-2 bg-gray-50 border-b">
         <div className="flex items-center justify-between">
-          <span className="text-xs sm:text-sm text-gray-600">
+          <span className="text-sm text-gray-600">
             총 <span className="font-semibold text-gray-900">{filteredInfluencers.length}</span>명의 인플루언서
+            {sortBy === '찜한목록' && (
+              <span className="ml-2 text-xs">
+                (<Heart className="inline h-3 w-3 fill-red-500 text-red-500" /> {favoriteIds.length})
+              </span>
+            )}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => loadInfluencers()}
-            className="text-xs p-1"
+            className="text-xs"
           >
             <RefreshCw className="h-3 w-3 mr-1" />
             새로고침
@@ -349,97 +417,34 @@ export default function AdvertiserDashboard() {
       </div>
 
       {/* 인플루언서 그리드 */}
-      <main className="px-3 sm:px-4 py-4">
+      <main className="px-4 md:px-6 py-4">
         {filteredInfluencers.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
             {filteredInfluencers.map((influencer) => (
-              <Card 
-                key={influencer.id} 
-                className="overflow-hidden hover:shadow-lg transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] flex flex-col"
-                onClick={() => router.push(`/advertiser/influencer/${influencer.id}`)}
-              >
-                <CardContent className="p-0 flex flex-col h-full">
-                  {/* 이미지 영역 - 더 길게, object-contain 적용 */}
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 flex-[3]">
-  <div className="aspect-square flex items-center justify-center overflow-hidden">
-    {influencer.profile_image ? (
-      <img 
-        src={influencer.profile_image} 
-        alt={influencer.name}
-        className="w-full h-full object-cover"
-      />
-    ) : (
-      <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
-    )}
-  </div>
-  
-  <Button
-    variant="ghost"
-    size="sm"
-    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-10"
-    onClick={(e) => {
-      e.stopPropagation()
-      toggleFavorite(influencer.id)
-    }}
-  >
-    <Heart 
-      className={`h-3.5 w-3.5 ${
-        favoriteIds.includes(influencer.id) 
-          ? 'fill-red-500 text-red-500' 
-          : 'text-gray-600'
-      }`} 
-    />
-  </Button>
-
-  <div className="absolute bottom-2 left-2 z-10">
-    <Badge className={`text-[10px] px-1.5 py-0.5 border ${categoryColors[influencer.category] || categoryColors['기타']}`}>
-      {influencer.category || '미정'}
-    </Badge>
-  </div>
-</div>
-
-                  {/* 정보 영역 - 더 컴팩트하게 */}
-                  <div className="p-2 flex flex-col flex-[1]">
-                    {/* 이름 영역 */}
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <h3 className="font-semibold text-gray-900 text-xs truncate flex-1">
-                        {influencer.name || '이름 미설정'}
-                      </h3>
-                      {influencer.is_verified && (
-                        <CheckCircle className="w-3 h-3 text-blue-500 flex-shrink-0" />
-                      )}
-                    </div>
-
-                    {/* 위치 영역 - 더 작게 */}
-                    <div className="flex items-center gap-0.5 mb-1">
-                      {influencer.location ? (
-                        <>
-                          <MapPin className="h-2.5 w-2.5 text-gray-500 flex-shrink-0" />
-                          <span className="text-[10px] text-gray-500 truncate">{influencer.location}</span>
-                        </>
-                      ) : (
-                        <span className="text-[10px] text-gray-400">위치 미설정</span>
-                      )}
-                    </div>
-
-                    {/* 팔로워/참여율 영역 - 더 컴팩트 */}
-                    <div className="flex items-center justify-between mt-auto">
-                      <div>
-                        <span className="text-[9px] text-gray-500 block">팔로워</span>
-                        <div className="font-semibold text-gray-900 text-[10px]">
-                          {formatFollowers(influencer.followers_count)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[9px] text-gray-500 block">참여율</span>
-                        <div className="font-semibold text-gray-900 text-[10px]">
-                          {influencer.engagement_rate || 0}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={influencer.id} className="relative">
+                <InfluencerCard 
+                  influencer={influencer}
+                  viewType="advertiser"
+                />
+                {/* 찜하기 버튼 오버레이 */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 hover:bg-white p-0 shadow-md z-10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleFavorite(influencer.id)
+                  }}
+                >
+                  <Heart 
+                    className={`h-4 w-4 ${
+                      favoriteIds.includes(influencer.id) 
+                        ? 'fill-red-500 text-red-500' 
+                        : 'text-gray-600'
+                    }`} 
+                  />
+                </Button>
+              </div>
             ))}
           </div>
         ) : (
@@ -451,7 +456,7 @@ export default function AdvertiserDashboard() {
                 : '검색 결과가 없습니다'
               }
             </p>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-gray-400">
               {sortBy === '찜한목록' 
                 ? '하트를 눌러 관심있는 인플루언서를 저장하세요' 
                 : '다른 검색 조건을 시도해보세요'
