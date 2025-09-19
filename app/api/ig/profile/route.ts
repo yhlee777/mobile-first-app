@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   try {
     // Instagram Business Discovery API
     const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN
-    const BUSINESS_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ID
+    const BUSINESS_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID
     
     if (!ACCESS_TOKEN || !BUSINESS_ACCOUNT_ID) {
       return NextResponse.json({ 

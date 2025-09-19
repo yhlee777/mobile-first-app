@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
   Users, 
   Building,
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react'
 
 export default function LandingPage() {
+  const router = useRouter()  // router 추가
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
       {/* 헤더 */}
@@ -49,31 +52,27 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* CTA 버튼들 - 로그인 링크로 변경 */}
+          {/* CTA 버튼들 - Link를 Button onClick으로 변경 */}
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-12 sm:mb-16">
             <Button 
               size="lg" 
               className="w-full sm:w-auto brand-primary brand-primary-hover text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              asChild
+              onClick={() => router.push('/signup?tab=advertiser')}  // 변경
             >
-              <Link href="/login" className="flex items-center gap-3">
-                <Building className="h-5 w-5" />
-                광고주로 시작하기
-                <ArrowRight className="h-5 w-5" />
-              </Link>
+              <Building className="h-5 w-5" />
+              광고주로 시작하기
+              <ArrowRight className="h-5 w-5" />
             </Button>
             
             <Button 
               size="lg" 
               variant="outline"
               className="w-full sm:w-auto brand-primary-border brand-primary-text hover:brand-primary hover:text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              asChild
+              onClick={() => router.push('/signup?tab=influencer')}  // 변경
             >
-              <Link href="/login" className="flex items-center gap-3">
-                <Users className="h-5 w-5" />
-                인플루언서로 시작하기
-                <ArrowRight className="h-5 w-5" />
-              </Link>
+              <Users className="h-5 w-5" />
+              인플루언서로 시작하기
+              <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
 
@@ -134,31 +133,34 @@ export default function LandingPage() {
               <h3 className="text-white font-bold text-xl mb-4">잇다</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
                 인플루언서와 광고주를 연결하는 스마트한 마케팅 플랫폼입니다.
-                <br className="hidden sm:block" />
-                AI 기반 매칭과 실시간 분석으로 성공적인 캠페인을 만들어보세요.
+                <br />
+                진정성 있는 콘텐츠로 브랜드 가치를 높이세요.
               </p>
             </div>
+            
             <div>
-              <h3 className="text-white font-semibold mb-4">서비스</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/login" className="hover:text-white transition-colors">인플루언서</Link></li>
-                <li><Link href="/login" className="hover:text-white transition-colors">광고주</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">캠페인 관리</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">성과 분석</a></li>
+              <h4 className="text-white font-semibold mb-3">서비스</h4>
+              <ul className="space-y-2">
+                <li><Link href="/about" className="text-gray-400 hover:text-white text-sm transition-colors">회사소개</Link></li>
+                <li><Link href="/features" className="text-gray-400 hover:text-white text-sm transition-colors">주요기능</Link></li>
+                <li><Link href="/pricing" className="text-gray-400 hover:text-white text-sm transition-colors">요금안내</Link></li>
               </ul>
             </div>
+            
             <div>
-              <h3 className="text-white font-semibold mb-4">지원</h3>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">도움말</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">문의하기</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">이용약관</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">개인정보처리방침</a></li>
+              <h4 className="text-white font-semibold mb-3">고객지원</h4>
+              <ul className="space-y-2">
+                <li><Link href="/help" className="text-gray-400 hover:text-white text-sm transition-colors">도움말</Link></li>
+                <li><Link href="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">문의하기</Link></li>
+                <li><Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">이용약관</Link></li>
               </ul>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-            <p>&copy; 2024 잇다. All rights reserved.</p>
+          
+          <div className="mt-8 pt-8 border-t border-gray-800 text-center">
+            <p className="text-gray-500 text-sm">
+              © 2024 잇다. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
