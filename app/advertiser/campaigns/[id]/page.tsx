@@ -19,7 +19,8 @@ import {
   Clock,
   ChevronRight,
   MessageSquare,
-  X
+  X,
+  Eye  // Eye 추가
 } from 'lucide-react'
 
 interface Campaign {
@@ -41,6 +42,7 @@ interface Application {
   message: string
   status: string
   created_at: string
+  influencer_id?: string  // 추가
   influencers: {
     id: string
     name: string
@@ -49,6 +51,7 @@ interface Application {
     followers_count: number
     engagement_rate: number
     category: string
+    user_id?: string  // 추가
   }
 }
 
@@ -94,7 +97,8 @@ export default function CampaignDetailPage() {
             profile_image,
             followers_count,
             engagement_rate,
-            category
+            category,
+            user_id
           )
         `)
         .eq('campaign_id', campaignId)
@@ -112,87 +116,88 @@ export default function CampaignDetailPage() {
   }
 
   const updateApplicationStatus = async (applicationId: string, newStatus: 'accepted' | 'rejected') => {
-  setUpdating(true)
-  try {
-    // 1. 지원 상태 업데이트
-    const { error: updateError } = await supabase
-      .from('campaign_applications')
-      .update({ 
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', applicationId)
+    setUpdating(true)
+    try {
+      // 1. 지원 상태 업데이트
+      const { error: updateError } = await supabase
+        .from('campaign_applications')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
 
-    if (updateError) throw updateError
+      if (updateError) throw updateError
 
-    // 2. 알림 생성
-    if (selectedApplication && campaign) {
-      const { data: influencerData } = await supabase
-        .from('influencers')
-        .select('user_id')
-        .eq('id', selectedApplication.influencers.id)
-        .single()
+      // 2. 인플루언서에게 알림 생성
+      if (selectedApplication && campaign) {
+        const { data: influencerData } = await supabase
+          .from('influencers')
+          .select('user_id')
+          .eq('id', selectedApplication.influencers.id)
+          .single()
 
-      if (influencerData?.user_id) {
-        await supabase
-          .from('notifications')
-          .insert({
+        if (influencerData?.user_id) {
+          const notificationData = newStatus === 'accepted' ? {
             user_id: influencerData.user_id,
-            type: newStatus === 'accepted' ? 'application_approved' : 'application_rejected',
-            title: newStatus === 'accepted' 
-              ? '🎉 캠페인 지원이 승인되었습니다!' 
-              : '😢 캠페인 지원 결과',
-            message: newStatus === 'accepted'
-              ? `"${campaign.title}" 캠페인 지원이 승인되었습니다. 광고주의 DM을 기다려주세요!`
-              : `"${campaign.title}" 캠페인 지원이 거절되었습니다. 다른 캠페인에 도전해보세요!`,
+            type: 'application_approved',
+            title: '🎉 축하합니다! 캠페인에 선정되셨습니다!',
+            message: `"${campaign.title}" 캠페인에 최종 선정되셨습니다. 광고주의 연락을 기다려주세요.`,
             related_id: campaign.id,
             is_read: false
-          })
-      }
-    }
+          } : {
+            user_id: influencerData.user_id,
+            type: 'application_rejected',
+            title: '📌 캠페인 지원 결과 안내',
+            message: `"${campaign.title}" 캠페인에는 아쉽게도 선정되지 못했습니다. 다른 멋진 캠페인에 도전해보세요!`,
+            related_id: campaign.id,
+            is_read: false
+          }
 
-    // 3. 캠페인 새로고침
-    await loadCampaign(params.id as string)
-    
-    // 4. UI 피드백
-    if (newStatus === 'accepted' && selectedApplication) {
-      alert('✅ 승인이 완료되었습니다!')
+          await supabase
+            .from('notifications')
+            .insert(notificationData)
+        }
+      }
+
+      // 3. 캠페인 새로고침
+      await loadCampaign(params.id as string)
       
-      // 선택된 지원자 정보 업데이트 (모달 유지)
-      setSelectedApplication({
-        ...selectedApplication,
-        status: 'accepted'
-      })
-      
-      // 인스타그램으로 이동 여부 확인
-      const instagramHandle = selectedApplication.influencers.instagram_handle
-      const confirmDM = confirm(
-        `인플루언서 @${instagramHandle}의 인스타그램으로 이동하시겠습니까?\n\nDM으로 상세 내용을 논의해주세요.`
-      )
-      
-      if (confirmDM) {
-        window.open(`https://www.instagram.com/${instagramHandle}`, '_blank')
+      // 4. UI 피드백
+      if (newStatus === 'accepted' && selectedApplication) {
+        alert('✅ 승인이 완료되었습니다! 인플루언서에게 알림이 전송되었습니다.')
+        
+        setSelectedApplication({
+          ...selectedApplication,
+          status: 'accepted'
+        })
+        
+        const instagramHandle = selectedApplication.influencers.instagram_handle
+        const confirmDM = confirm(
+          `인플루언서 @${instagramHandle}의 인스타그램으로 이동하시겠습니까?\n\nDM으로 상세 내용을 논의해주세요.`
+        )
+        
+        if (confirmDM) {
+          window.open(`https://www.instagram.com/${instagramHandle}`, '_blank')
+        }
+        
+      } else if (newStatus === 'rejected' && selectedApplication) {
+        alert('지원을 거절했습니다. 인플루언서에게 알림이 전송되었습니다.')
+        
+        setSelectedApplication({
+          ...selectedApplication,
+          status: 'rejected'
+        })
       }
       
-      // 모달은 열어둔 상태 유지 (setShowDetail(false) 제거)
-      
-    } else if (newStatus === 'rejected') {
-      alert('❌ 지원을 거절했습니다.')
-      
-      // 거절의 경우도 모달 유지하고 상태만 업데이트
-      setSelectedApplication({
-        ...selectedApplication,
-        status: 'rejected'
-      })
+    } catch (error) {
+      console.error('Error:', error)
+      alert('상태 변경 중 오류가 발생했습니다')
+    } finally {
+      setUpdating(false)
     }
-    
-  } catch (error) {
-    console.error('Error:', error)
-    alert('상태 변경 중 오류가 발생했습니다')
-  } finally {
-    setUpdating(false)
   }
-}
+
   const deleteCampaign = async () => {
     if (!confirm('정말 이 캠페인을 삭제하시겠습니까?')) return
     
@@ -261,13 +266,13 @@ export default function CampaignDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/advertiser/campaigns')}
+                onClick={() => router.back()}
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
                 <h1 className="text-lg font-bold">{campaign.title}</h1>
-                <p className="text-xs text-gray-500">캠페인 상세</p>
+                <p className="text-xs text-gray-500">{campaign.category}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -281,8 +286,8 @@ export default function CampaignDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-red-600 hover:bg-red-50"
                 onClick={deleteCampaign}
+                className="text-red-600"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -291,50 +296,51 @@ export default function CampaignDetailPage() {
         </div>
       </header>
 
-      <main className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-        <Card>
+      <main className="container max-w-4xl mx-auto px-4 py-6">
+        {/* 캠페인 상세 정보 */}
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle>캠페인 정보</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-semibold mb-2">설명</h3>
-              <p className="text-gray-600 whitespace-pre-wrap">{campaign.description}</p>
+              <p className="text-gray-600">{campaign.description}</p>
             </div>
             
             {campaign.requirements && (
               <div>
                 <h3 className="font-semibold mb-2">요구사항</h3>
-                <p className="text-gray-600 whitespace-pre-wrap">{campaign.requirements}</p>
+                <p className="text-gray-600">{campaign.requirements}</p>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-gray-500" />
-                <span className="text-sm">
-                  예산: {campaign.budget_min?.toLocaleString()}원 ~ {campaign.budget_max?.toLocaleString()}원
-                </span>
+                <DollarSign className="h-4 w-4 text-gray-400" />
+                <span>예산: {(campaign.budget_min / 10000)}~{(campaign.budget_max / 10000)}만원</span>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span className="text-sm">
-                  기간: {campaign.start_date || '미정'} ~ {campaign.end_date || '미정'}
-                </span>
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span>{new Date(campaign.start_date).toLocaleDateString('ko-KR')} - {new Date(campaign.end_date).toLocaleDateString('ko-KR')}</span>
               </div>
             </div>
+
+            <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+              {campaign.status === 'active' ? '진행중' : '마감'}
+            </Badge>
           </CardContent>
         </Card>
 
+        {/* 지원자 목록 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>지원자 목록</span>
-              <Badge variant="outline">
-                <Users className="h-3 w-3 mr-1" />
-                {applications.length}명
-              </Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                지원자 ({applications.length}명)
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             {applications.length === 0 ? (
@@ -345,9 +351,35 @@ export default function CampaignDetailPage() {
                   <div
                     key={app.id}
                     className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 cursor-pointer rounded-lg"
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedApplication(app)
                       setShowDetail(true)
+                      
+                      // 지원서 읽음 알림 보내기
+                      if (app.status === 'pending' && campaign) {
+                        try {
+                          const { data: influencerData } = await supabase
+                            .from('influencers')
+                            .select('user_id')
+                            .eq('id', app.influencers.id)
+                            .single()
+
+                          if (influencerData?.user_id) {
+                            await supabase
+                              .from('notifications')
+                              .insert({
+                                user_id: influencerData.user_id,
+                                type: 'application_viewed',
+                                title: '📋 지원서가 확인되었습니다',
+                                message: `광고주가 "${campaign.title}" 캠페인 지원서를 확인했습니다.`,
+                                related_id: campaign.id,
+                                is_read: false
+                              })
+                          }
+                        } catch (error) {
+                          console.error('알림 생성 실패:', error)
+                        }
+                      }
                     }}
                   >
                     <div className="flex items-center gap-3">

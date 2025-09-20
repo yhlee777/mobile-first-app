@@ -1,45 +1,38 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { useRouter, useParams } from 'next/navigation'
-import BottomNav from '@/components/navigation/bottom-nav'
-import { 
-  ArrowLeft, 
-  Calendar, 
-  DollarSign, 
+import {
+  ArrowLeft,
   Building,
-  Users,
-  Hash,
-  MapPin,
-  Loader2,
-  Send,
+  DollarSign,
+  Calendar,
+  Target,
   CheckCircle,
-  AlertCircle,
   Clock,
-  Instagram,
-  Heart,
-  MessageCircle,
-  Target
+  AlertCircle,
+  Loader2,
+  MessageSquare
 } from 'lucide-react'
 
 interface Campaign {
   id: string
   title: string
   description: string
-  requirements: string
+  requirements?: string
+  deliverables?: string
   budget_min: number
   budget_max: number
   category: string
   start_date: string
   end_date: string
   status: string
-  created_at: string
   brands: {
     id: string
     name: string
@@ -78,13 +71,22 @@ export default function CampaignDetailPage() {
     try {
       setLoading(true)
       
-      // 현재 사용자 확인
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
         router.push('/login')
         return
       }
+
+      // users 테이블 확인/생성
+      await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          user_type: 'influencer',
+          name: user.email?.split('@')[0] || 'User',
+          updated_at: new Date().toISOString()
+        })
 
       // 인플루언서 정보 가져오기
       const { data: influencer } = await supabase
@@ -137,47 +139,77 @@ export default function CampaignDetailPage() {
     }
   }
 
-  const handleApply = async () => {
-    if (!influencerId || !campaign || !proposal.trim()) {
-      alert('제안 내용을 입력해주세요')
-      return
-    }
-
-    setApplying(true)
-    
-    try {
-      const { error } = await supabase
-        .from('campaign_applications')
-        .insert({
-          campaign_id: campaign.id,
-          influencer_id: influencerId,
-          proposal,
-          status: 'pending'
-        })
-
-      if (error) throw error
-      
-      // 지원 내역 다시 로드
-      const { data: newApp } = await supabase
-        .from('campaign_applications')
-        .select('*')
-        .eq('campaign_id', campaign.id)
-        .eq('influencer_id', influencerId)
-        .single()
-      
-      if (newApp) {
-        setApplication(newApp)
-      }
-      
-      alert('지원이 완료되었습니다!')
-      
-    } catch (error: any) {
-      console.error('Apply error:', error)
-      alert(error.message || '지원 중 오류가 발생했습니다')
-    } finally {
-      setApplying(false)
-    }
+ const handleApply = async () => {
+  if (!influencerId || !campaign || !proposal.trim()) {
+    alert('제안 내용을 입력해주세요')
+    return
   }
+
+  setApplying(true)
+  
+  try {
+    // 1. 캠페인 지원
+    const { error } = await supabase
+      .from('campaign_applications')
+      .insert({
+        campaign_id: campaign.id,
+        influencer_id: influencerId,
+        proposal: proposal,
+        message: proposal, // message 필드도 추가
+        status: 'pending'
+      })
+
+    if (error) throw error
+    
+    // 2. 광고주에게 알림 보내기
+    // 광고주의 user_id 찾기
+    const { data: brandData } = await supabase
+      .from('brands')
+      .select('user_id, name')
+      .eq('id', campaign.brands.id)
+      .single()
+
+    if (brandData?.user_id) {
+      // 인플루언서 정보 가져오기
+      const { data: influencerData } = await supabase
+        .from('influencers')
+        .select('name, instagram_handle')
+        .eq('id', influencerId)
+        .single()
+
+      // 알림 생성
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: brandData.user_id,
+          type: 'new_application',
+          title: '🎉 새로운 캠페인 지원자!',
+          message: `${influencerData?.name || '인플루언서'}(@${influencerData?.instagram_handle})님이 "${campaign.title}" 캠페인에 지원했습니다.`,
+          related_id: campaign.id,
+          is_read: false
+        })
+    }
+    
+    // 3. 지원 내역 다시 로드
+    const { data: newApp } = await supabase
+      .from('campaign_applications')
+      .select('*')
+      .eq('campaign_id', campaign.id)
+      .eq('influencer_id', influencerId)
+      .single()
+    
+    if (newApp) {
+      setApplication(newApp)
+    }
+    
+    alert('지원이 완료되었습니다!')
+  } catch (error: any) {
+    console.error('Apply error:', error)
+    alert(error.message || '지원 중 오류가 발생했습니다')
+  } finally {
+    setApplying(false)
+  }
+}
 
   const formatBudget = (min: number, max: number) => {
     const format = (n: number) => {
@@ -224,8 +256,8 @@ export default function CampaignDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50/40 via-white to-pink-50/30">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
       </div>
     )
   }
@@ -239,7 +271,7 @@ export default function CampaignDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50/40 via-white to-pink-50/30 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20 pb-20">
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b">
         <div className="px-4 py-3">
@@ -302,7 +334,7 @@ export default function CampaignDetailPage() {
             <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                  <Target className="h-4 w-4 text-purple-600" />
+                  <Target className="h-4 w-4 text-[#51a66f]" />
                   캠페인 소개
                 </h4>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">
@@ -313,11 +345,23 @@ export default function CampaignDetailPage() {
               {campaign.requirements && (
                 <div>
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                    <CheckCircle className="h-4 w-4 text-purple-600" />
+                    <CheckCircle className="h-4 w-4 text-[#51a66f]" />
                     참여 조건
                   </h4>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">
                     {campaign.requirements}
+                  </p>
+                </div>
+              )}
+
+              {campaign.deliverables && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4 text-[#51a66f]" />
+                    제공 내용
+                  </h4>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {campaign.deliverables}
                   </p>
                 </div>
               )}
@@ -332,11 +376,11 @@ export default function CampaignDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500">예산</p>
-                  <p className="text-sm font-semibold text-purple-600">
+                  <p className="text-sm font-semibold text-[#51a66f]">
                     {formatBudget(campaign.budget_min, campaign.budget_max)}
                   </p>
                 </div>
-                <DollarSign className="h-5 w-5 text-purple-600 opacity-50" />
+                <DollarSign className="h-5 w-5 text-[#51a66f] opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -352,7 +396,7 @@ export default function CampaignDetailPage() {
                       : '미정'}
                   </p>
                 </div>
-                <Calendar className="h-5 w-5 text-purple-600 opacity-50" />
+                <Calendar className="h-5 w-5 text-[#51a66f] opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -366,44 +410,42 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {getApplicationStatus()}
-              <div className="mt-4">
-                <Label className="text-sm font-semibold">내 제안</Label>
-                <p className="text-sm text-gray-700 mt-2 p-3 bg-gray-50 rounded-lg">
-                  {application.proposal}
-                </p>
-              </div>
+              {application.proposal && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm font-semibold mb-1">내 제안서</p>
+                  <p className="text-sm text-gray-700">{application.proposal}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+          <Card className="bg-white/90 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Send className="h-5 w-5 text-purple-600" />
-                캠페인 지원하기
-              </CardTitle>
+              <CardTitle className="text-lg">캠페인 지원하기</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="proposal">제안 내용 *</Label>
+                  <Label htmlFor="proposal" className="text-sm font-semibold mb-2 block">
+                    자기소개 및 제안서
+                  </Label>
                   <Textarea
                     id="proposal"
-                    placeholder="어떻게 이 캠페인을 진행하실 계획인가요? 본인의 강점과 콘텐츠 계획을 자유롭게 작성해주세요."
                     value={proposal}
                     onChange={(e) => setProposal(e.target.value)}
-                    rows={5}
-                    className="mt-2"
-                    disabled={applying}
+                    placeholder="캠페인에 참여하고 싶은 이유와 본인의 강점을 작성해주세요."
+                    rows={6}
+                    className="w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    구체적인 계획을 작성할수록 선정 확률이 높아집니다
+                    최소 50자 이상 작성해주세요 ({proposal.length}자)
                   </p>
                 </div>
                 
-                <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                <Button
                   onClick={handleApply}
-                  disabled={applying || !proposal.trim() || campaign.status !== 'active'}
+                  disabled={applying || proposal.length < 50 || campaign.status !== 'active'}
+                  className="w-full bg-[#51a66f] hover:bg-[#51a66f]/90"
                 >
                   {applying ? (
                     <>
@@ -411,10 +453,7 @@ export default function CampaignDetailPage() {
                       지원 중...
                     </>
                   ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      지원하기
-                    </>
+                    '지원하기'
                   )}
                 </Button>
               </div>
@@ -422,8 +461,6 @@ export default function CampaignDetailPage() {
           </Card>
         )}
       </div>
-
-      <BottomNav />
     </div>
   )
 }

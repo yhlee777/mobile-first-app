@@ -15,50 +15,114 @@ export default function BottomNav() {
 
   useEffect(() => {
     checkUser()
+    
+    // auth state 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        checkUser()
+      } else if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false)
+        setUserType(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const checkUser = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       
-      if (user) {
-        setIsLoggedIn(true)
-        
-        const { data: userData } = await supabase
-          .from('users')
-          .select('user_type')
-          .eq('id', user.id)
-          .single()
-        
-        if (userData?.user_type) {
-          setUserType(userData.user_type)
-        } else {
-          // 각 테이블 확인 로직
-          const { data: influencer } = await supabase
-            .from('influencers')
-            .select('id')
-            .eq('user_id', user.id)
-            .single()
-            
-          if (influencer) {
-            setUserType('influencer')
-          } else {
-            const { data: brand } = await supabase
-              .from('brands')
-              .select('id')
-              .eq('user_id', user.id)
-              .single()
-              
-            if (brand) {
-              setUserType('advertiser')
-            }
-          }
-        }
-      } else {
+      if (!user) {
         setIsLoggedIn(false)
+        setUserType(null)
+        setLoading(false)
+        return
       }
+
+      setIsLoggedIn(true)
+      
+      // 1. users 테이블에서 먼저 확인
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_type')
+        .eq('id', user.id)
+        .single()
+      
+      if (userData?.user_type) {
+        setUserType(userData.user_type)
+        setLoading(false)
+        return
+      }
+      
+      // 2. influencers 테이블 확인
+      const { data: influencer } = await supabase
+        .from('influencers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+        
+      if (influencer) {
+        setUserType('influencer')
+        // users 테이블 업데이트
+        await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            user_type: 'influencer',
+            updated_at: new Date().toISOString()
+          })
+        setLoading(false)
+        return
+      }
+      
+      // 3. brands 테이블 확인
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+        
+      if (brand) {
+        setUserType('advertiser')
+        // users 테이블 업데이트
+        await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            user_type: 'advertiser',
+            updated_at: new Date().toISOString()
+          })
+        setLoading(false)
+        return
+      }
+      
+      // 4. advertisers 테이블도 확인
+      const { data: advertiser } = await supabase
+        .from('advertisers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+        
+      if (advertiser) {
+        setUserType('advertiser')
+        await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            user_type: 'advertiser',
+            updated_at: new Date().toISOString()
+          })
+      } else {
+        // 기본값: 인플루언서
+        console.warn('User type not found, defaulting to influencer')
+        setUserType('influencer')
+      }
+      
     } catch (error) {
       console.error('❌ Error checking user:', error)
+      // 에러 시 기본값 설정
+      setUserType('influencer')
     } finally {
       setLoading(false)
     }
@@ -76,7 +140,9 @@ export default function BottomNav() {
       label: '홈',
       icon: Home,
       onClick: () => {
-        if (userType === 'advertiser') {
+        // userType이 없을 경우 기본값 처리
+        const targetType = userType || 'influencer'
+        if (targetType === 'advertiser') {
           router.push('/advertiser/dashboard')
         } else {
           router.push('/influencer/dashboard')
@@ -84,42 +150,42 @@ export default function BottomNav() {
       },
       isActive: () => {
         if (userType === 'advertiser') {
-          return pathname.startsWith('/advertiser/dashboard')
+          return pathname === '/advertiser/dashboard'
         }
-        return pathname.startsWith('/influencer/dashboard')
+        return pathname === '/influencer/dashboard'
       }
     },
     {
-      label: '파트너',
-      icon: Users2,
-      onClick: () => {
-        if (userType === 'advertiser') {
-          router.push('/advertiser/partners')
-        } else {
-          router.push('/influencer/partners')
-        }
-      },
-      isActive: () => {
-        if (userType === 'advertiser') {
-          return pathname.startsWith('/advertiser/partners')
-        }
-        return pathname.startsWith('/influencer/partners')
-      }
-    },
+  label: '파트너',
+  icon: Users2,
+  onClick: () => {
+    if (userType === 'advertiser') {
+      router.push('/advertiser/partners')  // partners 페이지로
+    } else {
+      router.push('/influencer/partners')
+    }
+  },
+  isActive: () => {
+    if (userType === 'advertiser') {
+      return pathname.startsWith('/advertiser/partners')
+    }
+    return pathname.startsWith('/influencer/partners')
+  }
+},
     {
       label: '캠페인',
       icon: Megaphone,
       onClick: () => {
-        // 광고주도 전체 캠페인 보기로 변경
-        if (userType === 'advertiser') {
-          router.push('/advertiser/explore')
+        const targetType = userType || 'influencer'
+        if (targetType === 'advertiser') {
+          router.push('/advertiser/campaigns')
         } else {
           router.push('/influencer/campaigns')
         }
       },
       isActive: () => {
         if (userType === 'advertiser') {
-          return pathname.startsWith('/advertiser/explore') || pathname.startsWith('/advertiser/campaigns')
+          return pathname.startsWith('/advertiser/campaigns') || pathname.startsWith('/advertiser/explore')
         }
         return pathname.startsWith('/influencer/campaigns')
       }
@@ -128,7 +194,8 @@ export default function BottomNav() {
       label: '프로필',
       icon: UserCircle,
       onClick: () => {
-        if (userType === 'advertiser') {
+        const targetType = userType || 'influencer'
+        if (targetType === 'advertiser') {
           router.push('/advertiser/profile')
         } else {
           router.push('/influencer/profile')

@@ -16,7 +16,9 @@ import {
   Activity,
   Star,
   Target,
-  ArrowRight
+  ArrowRight,
+  Bell,
+  LogOut
 } from 'lucide-react'
 
 interface Stats {
@@ -65,6 +67,7 @@ export default function InfluencerDashboard() {
   const [applications, setApplications] = useState<Campaign[]>([])
   const [recommendedCampaigns, setRecommendedCampaigns] = useState<RecommendedCampaign[]>([])
   const [loading, setLoading] = useState(true)
+  const [notificationCount, setNotificationCount] = useState(0)
   const router = useRouter()
   const supabase = createClient()
 
@@ -99,7 +102,21 @@ export default function InfluencerDashboard() {
   useEffect(() => {
     loadDashboard()
     loadRecommendedCampaigns()
+    loadNotificationCount()
   }, [])
+
+  const loadNotificationCount = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+    
+    setNotificationCount(count || 0)
+  }
 
   const loadDashboard = async () => {
     try {
@@ -206,6 +223,38 @@ export default function InfluencerDashboard() {
       {/* 헤더 프로필 섹션 */}
       <div className="bg-gradient-to-r from-[#51a66f] to-emerald-600 text-white px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* 알림 버튼 추가 */}
+          <div className="flex justify-end gap-2 mb-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/notifications')}
+              className="relative bg-white/20 backdrop-blur hover:bg-white/30 text-white border-0 p-2"
+            >
+              <Bell className="h-4 w-4" />
+              {notificationCount > 0 && (
+                <div className="absolute -top-1 -right-1 z-10">
+                  <span className="flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                </div>
+              )}
+            </Button>
+            
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                await supabase.auth.signOut()
+                router.push('/')
+              }}
+              className="bg-white/20 backdrop-blur hover:bg-white/30 text-white border-0 p-2"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+
           <div className="flex items-center gap-4 mb-6">
             {stats.profileImage ? (
               <img 
@@ -274,40 +323,39 @@ export default function InfluencerDashboard() {
       {/* 메인 콘텐츠 */}
       <div className="px-4 py-6 max-w-4xl mx-auto">
         {/* 활동 통계 카드 */}
-        {/* 활동 통계 카드 - 클릭 가능하도록 수정 */}
-<div className="grid grid-cols-2 gap-3 mb-6">
-  <Card 
-    className="bg-white/90 backdrop-blur hover:shadow-md transition-all cursor-pointer"
-    onClick={() => router.push('/influencer/applications?tab=pending')}
-  >
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between mb-2">
-        <Target className="h-5 w-5 text-[#51a66f]" />
-        <Badge variant="secondary" className="bg-green-50 text-[#51a66f] border-0">
-          활성
-        </Badge>
-      </div>
-      <p className="text-2xl font-bold text-gray-800 mb-1">{stats.activeApplications}</p>
-      <p className="text-xs text-gray-600">지원 중인 캠페인</p>
-    </CardContent>
-  </Card>
-  
-  <Card 
-    className="bg-white/90 backdrop-blur hover:shadow-md transition-all cursor-pointer"
-    onClick={() => router.push('/influencer/applications?tab=accepted')}
-  >
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between mb-2">
-        <Star className="h-5 w-5 text-amber-500" />
-        <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-0">
-          성공
-        </Badge>
-      </div>
-      <p className="text-2xl font-bold text-gray-800 mb-1">{stats.acceptedCampaigns}</p>
-      <p className="text-xs text-gray-600">승인된 캠페인</p>
-    </CardContent>
-  </Card>
-</div>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Card 
+            className="bg-white/90 backdrop-blur hover:shadow-md transition-all cursor-pointer"
+            onClick={() => router.push('/influencer/applications?tab=pending')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Target className="h-5 w-5 text-[#51a66f]" />
+                <Badge variant="secondary" className="bg-green-50 text-[#51a66f] border-0">
+                  활성
+                </Badge>
+              </div>
+              <p className="text-2xl font-bold text-gray-800 mb-1">{stats.activeApplications}</p>
+              <p className="text-xs text-gray-600">지원 중인 캠페인</p>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className="bg-white/90 backdrop-blur hover:shadow-md transition-all cursor-pointer"
+            onClick={() => router.push('/influencer/applications?tab=accepted')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Star className="h-5 w-5 text-amber-500" />
+                <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-0">
+                  성공
+                </Badge>
+              </div>
+              <p className="text-2xl font-bold text-gray-800 mb-1">{stats.acceptedCampaigns}</p>
+              <p className="text-xs text-gray-600">승인된 캠페인</p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 추천 캠페인 */}
         <div className="mb-6">

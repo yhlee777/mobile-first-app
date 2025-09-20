@@ -353,7 +353,7 @@ export default function CampaignListPage() {
                   <Button 
                     size="sm" 
                     className="flex-1 text-xs h-8 bg-[#51a66f] hover:bg-[#449960] text-white"
-                    onClick={() => router.push(`/advertiser/campaigns/${campaign.id}/applications`)}
+                    onClick={() => router.push(`/advertiser/campaigns/${campaign.id}`)}
                   >
                     지원자 관리
                   </Button>

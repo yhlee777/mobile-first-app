@@ -13,7 +13,9 @@ import {
   XCircle, 
   MessageSquare,
   Loader2,
-  CheckCheck
+  CheckCheck,
+  Users,
+  Eye
 } from 'lucide-react'
 
 interface Notification {
@@ -89,6 +91,10 @@ export default function NotificationsPage() {
 
   const getIcon = (type: string) => {
     switch (type) {
+      case 'new_application':
+        return <Users className="h-5 w-5 text-blue-500" />
+      case 'application_viewed':
+        return <Eye className="h-5 w-5 text-purple-500" />
       case 'application_approved':
         return <CheckCircle className="h-5 w-5 text-green-500" />
       case 'application_rejected':
