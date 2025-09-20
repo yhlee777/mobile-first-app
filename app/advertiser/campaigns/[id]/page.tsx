@@ -351,37 +351,48 @@ export default function CampaignDetailPage() {
                   <div
                     key={app.id}
                     className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 cursor-pointer rounded-lg"
-                    onClick={async () => {
-                      setSelectedApplication(app)
-                      setShowDetail(true)
-                      
-                      // 지원서 읽음 알림 보내기
-                      if (app.status === 'pending' && campaign) {
-                        try {
-                          const { data: influencerData } = await supabase
-                            .from('influencers')
-                            .select('user_id')
-                            .eq('id', app.influencers.id)
-                            .single()
+               onClick={async () => {
+  setSelectedApplication(app)
+  setShowDetail(true)
+  
+  // 지원서 읽음 알림 보내기
+  if (app.status === 'pending' && campaign) {
+    try {
+      const { data: influencerData } = await supabase
+        .from('influencers')
+        .select('user_id')
+        .eq('id', app.influencers.id)
+        .single()
 
-                          if (influencerData?.user_id) {
-                            await supabase
-                              .from('notifications')
-                              .insert({
-                                user_id: influencerData.user_id,
-                                type: 'application_viewed',
-                                title: '📋 지원서가 확인되었습니다',
-                                message: `광고주가 "${campaign.title}" 캠페인 지원서를 확인했습니다.`,
-                                related_id: campaign.id,
-                                is_read: false
-                              })
-                          }
-                        } catch (error) {
-                          console.error('알림 생성 실패:', error)
-                        }
-                      }
-                    }}
-                  >
+      if (influencerData?.user_id) {
+        // 이미 알림을 보낸 적이 있는지 확인
+        const { data: existingNotification } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', influencerData.user_id)
+          .eq('type', 'application_viewed')
+          .eq('related_id', campaign.id)
+          .single()
+
+        // 처음 조회할 때만 알림 보내기
+        if (!existingNotification) {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: influencerData.user_id,
+              type: 'application_viewed',
+              title: '👀 광고주가 지원서를 확인했어요!',  // ← 변경
+              message: `광고주가 인플루언서님의 지원서를 봤어요. 곧 좋은 소식이 있을지도 몰라요!`,  // ← 변경
+              related_id: campaign.id,
+              is_read: false
+            })
+        }
+      }
+    } catch (error) {
+      console.error('알림 생성 실패:', error)
+    }
+  }
+}}          >
                     <div className="flex items-center gap-3">
                       {app.influencers.profile_image ? (
                         <img

@@ -15,7 +15,8 @@ import {
   Loader2,
   CheckCheck,
   Users,
-  Eye
+  Eye,
+  Heart
 } from 'lucide-react'
 
 interface Notification {

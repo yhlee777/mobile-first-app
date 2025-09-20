@@ -128,31 +128,53 @@ export default function AdvertiserDashboard() {
   }
 
   const toggleFavorite = async (influencerId: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
 
-    const isFavorited = favoriteIds.includes(influencerId)
+  const isFavorited = favoriteIds.includes(influencerId)
+  
+  if (isFavorited) {
+    await supabase
+      .from('wishlists')
+      .delete()
+      .eq('brand_id', user.id)
+      .eq('influencer_id', influencerId)
     
-    if (isFavorited) {
-      await supabase
-        .from('wishlists')
-        .delete()
-        .eq('brand_id', user.id)
-        .eq('influencer_id', influencerId)
-      
-      setFavoriteIds(prev => prev.filter(id => id !== influencerId))
-    } else {
-      await supabase
-        .from('wishlists')
-        .insert({
-          brand_id: user.id,
-          influencer_id: influencerId
-        })
-      
-      setFavoriteIds(prev => [...prev, influencerId])
+    setFavoriteIds(prev => prev.filter(id => id !== influencerId))
+  } else {
+    await supabase
+      .from('wishlists')
+      .insert({
+        brand_id: user.id,
+        influencer_id: influencerId
+      })
+    
+    setFavoriteIds(prev => [...prev, influencerId])
+    
+    // 인플루언서에게 찜 알림 보내기
+    try {
+      const { data: influencerData } = await supabase
+        .from('influencers')
+        .select('user_id')
+        .eq('id', influencerId)
+        .single()
+
+      if (influencerData?.user_id) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: influencerData.user_id,
+            type: 'profile_favorited',
+            title: '💚 프로필이 찜되었습니다!',
+            message: '광고주가 인플루언서님의 프로필을 찜했어요! 좋은 기회가 올지도 몰라요.',
+            is_read: false
+          })
+      }
+    } catch (error) {
+      console.error('찜 알림 생성 실패:', error)
     }
   }
-
+}
   const filteredInfluencers = influencers.filter(influencer => {
     if (sortBy === '찜한목록' && !favoriteIds.includes(influencer.id)) {
       return false
