@@ -26,7 +26,8 @@ import {
   Activity,
   Calendar,
   X,
-  Loader2
+  Loader2,
+  Hash
 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 
@@ -44,92 +45,126 @@ interface Influencer {
   portfolio_urls?: string[]
   created_at?: string
   updated_at?: string
+  hashtags?: string[]
+}
+
+interface InstagramPost {
+  id: string
+  media_url: string
+  caption?: string
+  like_count: number
+  comments_count: number
+  media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM'
+}
+
+interface InstagramMetrics {
+  username: string
+  name: string
+  bio: string
+  profile_picture_url: string
+  followers_count: number
+  media_count: number
+  follows_count: number
+  is_verified: boolean
 }
 
 export default function InfluencerDetailPage() {
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
-  
-  const [isLiked, setIsLiked] = useState(false)
-  const [influencer, setInfluencer] = useState<Influencer | null>(null)
   const [loading, setLoading] = useState(true)
+  const [influencer, setInfluencer] = useState<Influencer | null>(null)
+  const [isLiked, setIsLiked] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [showShare, setShowShare] = useState(false)
-  
-  const influencerId = params?.id as string
+  const [copied, setCopied] = useState(false)
+  const [instagramData, setInstagramData] = useState<{
+    metrics?: InstagramMetrics
+    posts?: InstagramPost[]
+  }>({})
+  const [loadingInstagram, setLoadingInstagram] = useState(false)
 
   useEffect(() => {
-    if (influencerId) {
-      loadInfluencerData()
-      checkIfLiked()
-    }
-  }, [influencerId])
+    fetchInfluencer()
+    checkIfLiked()
+  }, [params.id])
 
-  const loadInfluencerData = async () => {
-    setLoading(true)
+  const fetchInfluencer = async () => {
     try {
       const { data, error } = await supabase
         .from('influencers')
         .select('*')
-        .eq('id', influencerId)
+        .eq('id', params.id)
         .single()
 
-      if (error) {
-        console.error('Error loading influencer:', error)
-        // 에러 시 목록으로 돌아가기
-        router.push('/advertiser')
-        return
-      }
+      if (error) throw error
+      setInfluencer(data)
 
-      if (data) {
-        setInfluencer({
-          id: data.id,
-          instagram_handle: data.instagram_handle || '',
-          name: data.name || data.instagram_handle || '이름 미설정',
-          bio: data.bio || '',
-          category: data.category || '미분류',
-          location: data.location || '미설정',
-          followers_count: data.followers_count || 0,
-          engagement_rate: data.engagement_rate || 0,
-          profile_image: data.profile_image || '',
-          is_verified: data.is_verified || false,
-          portfolio_urls: data.portfolio_urls || [],
-          created_at: data.created_at,
-          updated_at: data.updated_at
-        })
+      // Instagram 데이터 가져오기
+      if (data?.instagram_handle) {
+        fetchInstagramData(data.instagram_handle, data.id)
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error fetching influencer:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const checkIfLiked = async () => {
+  const fetchInstagramData = async (handle: string, influencerId: string) => {
+    setLoadingInstagram(true)
     try {
-      const savedLikes = localStorage.getItem('likedInfluencers')
-      if (savedLikes) {
-        const likes = JSON.parse(savedLikes)
-        setIsLiked(likes.includes(influencerId))
+      const response = await fetch(`/api/ig/metrics?handle=${handle}&influencerId=${influencerId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setInstagramData(data)
       }
     } catch (error) {
-      console.error('Error checking likes:', error)
+      console.error('Error fetching Instagram data:', error)
+    } finally {
+      setLoadingInstagram(false)
     }
   }
 
-  const handleLikeToggle = () => {
+  const checkIfLiked = async () => {
     try {
-      const savedLikes = localStorage.getItem('likedInfluencers')
-      let likes = savedLikes ? JSON.parse(savedLikes) : []
-      
-      if (isLiked) {
-        likes = likes.filter((id: string) => id !== influencerId)
-      } else {
-        likes.push(influencerId)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data } = await supabase
+        .from('influencer_likes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('influencer_id', params.id)
+        .single()
+
+      setIsLiked(!!data)
+    } catch (error) {
+      console.error('Error checking like status:', error)
+    }
+  }
+
+  const handleLikeToggle = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
       }
-      
-      localStorage.setItem('likedInfluencers', JSON.stringify(likes))
+
+      if (isLiked) {
+        await supabase
+          .from('influencer_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('influencer_id', params.id)
+      } else {
+        await supabase
+          .from('influencer_likes')
+          .insert({
+            user_id: user.id,
+            influencer_id: params.id
+          })
+      }
       setIsLiked(!isLiked)
     } catch (error) {
       console.error('Error toggling like:', error)
@@ -137,21 +172,12 @@ export default function InfluencerDetailPage() {
   }
 
   const handleShare = async () => {
-    const url = window.location.href
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${influencer?.name} - 인플루언서 프로필`,
-          text: influencer?.bio || '',
-          url: url
-        })
-      } catch (err) {
-        console.log('Share failed:', err)
-      }
-    } else {
-      // 클립보드에 복사
-      navigator.clipboard.writeText(url)
-      alert('링크가 복사되었습니다!')
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
   }
 
@@ -249,19 +275,19 @@ export default function InfluencerDetailPage() {
                     <Users className="h-16 w-16 text-white" />
                   </div>
                 )}
-                {influencer.is_verified && (
-                  <div className="absolute bottom-2 right-2 bg-blue-500 rounded-full p-1">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
-                )}
               </div>
 
               {/* 정보 */}
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 mb-3">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {influencer.name}
-                  </h1>
+                  <div className="flex items-center gap-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                      {influencer.name}
+                    </h1>
+                    {influencer.is_verified && (
+                      <CheckCircle className="h-5 w-5 text-blue-500" />
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge className={categoryColor}>
                       {influencer.category}
@@ -281,109 +307,132 @@ export default function InfluencerDetailPage() {
                   <p className="text-gray-700 max-w-2xl mb-4">{influencer.bio}</p>
                 )}
 
+                {/* 해시태그 섹션 */}
+                {influencer.hashtags && influencer.hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {influencer.hashtags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="bg-blue-50 text-blue-600 border-blue-200"
+                      >
+                        <Hash className="h-3 w-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
                 <Button 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                   onClick={() => window.open(`https://instagram.com/${influencer.instagram_handle}`, '_blank')}
                 >
+                  <Instagram className="h-5 w-5 mr-2" />
                   Instagram 프로필 보기
-                  <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 통계 카드 - 모바일 */}
-        <div className="sm:hidden px-4 py-6">
-          <h3 className="font-semibold text-gray-900 mb-4">성과 지표</h3>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-2xl border border-blue-200">
-              <Users className="h-8 w-8 text-blue-600 mb-2" />
-              <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(influencer.followers_count)}
-              </p>
-              <p className="text-sm text-gray-600">팔로워</p>
-            </div>
-            
-            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-2xl border border-green-200">
-              <TrendingUp className="h-8 w-8 text-green-600 mb-2" />
-              <p className="text-2xl font-bold text-gray-900">
-                {influencer.engagement_rate}%
-              </p>
-              <p className="text-sm text-gray-600">참여율</p>
-            </div>
-            
-            <div className="flex-shrink-0 w-40 bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-2xl border border-pink-200">
-              <Heart className="h-8 w-8 text-pink-600 mb-2" />
-              <p className="text-2xl font-bold text-gray-900">
-                {formatNumber(averageLikes)}
-              </p>
-              <p className="text-sm text-gray-600">평균 좋아요</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 통계 카드 - 데스크톱 */}
-        <div className="hidden sm:block container mx-auto px-4 py-6">
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatNumber(influencer.followers_count)}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">팔로워</p>
-                  </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
+        {/* 통계 카드 */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <CardContent className="p-4 text-center">
+                <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-blue-900">
+                  {formatNumber(influencer.followers_count)}
+                </p>
+                <p className="text-sm text-blue-700">팔로워</p>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {influencer.engagement_rate}%
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">참여율</p>
-                  </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardContent className="p-4 text-center">
+                <TrendingUp className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-green-900">
+                  {influencer.engagement_rate}%
+                </p>
+                <p className="text-sm text-green-700">참여율</p>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatNumber(averageLikes)}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">평균 좋아요</p>
-                  </div>
-                  <div className="h-12 w-12 bg-pink-100 rounded-full flex items-center justify-center">
-                    <Heart className="h-6 w-6 text-pink-600" />
-                  </div>
-                </div>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <CardContent className="p-4 text-center">
+                <Heart className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-purple-900">
+                  {formatNumber(averageLikes)}
+                </p>
+                <p className="text-sm text-purple-700">평균 좋아요</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+              <CardContent className="p-4 text-center">
+                <Star className="h-8 w-8 text-amber-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-amber-900">
+                  {influencer.category}
+                </p>
+                <p className="text-sm text-amber-700">전문 분야</p>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* 포트폴리오 섹션 */}
+        {/* Instagram 피드 미리보기 */}
+        {instagramData.posts && instagramData.posts.length > 0 && (
+          <div className="container mx-auto px-4 py-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Instagram className="h-5 w-5" />
+                  최근 게시물
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-2">
+                  {instagramData.posts.slice(0, 9).map((post) => (
+                    <div
+                      key={post.id}
+                      className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative group cursor-pointer"
+                      onClick={() => window.open(`https://instagram.com/p/${post.id}`, '_blank')}
+                    >
+                      <img
+                        src={post.media_url}
+                        alt={post.caption || 'Instagram post'}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <Heart className="h-4 w-4" />
+                              {formatNumber(post.like_count)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageCircle className="h-4 w-4" />
+                              {formatNumber(post.comments_count)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* 포트폴리오 갤러리 */}
         {influencer.portfolio_urls && influencer.portfolio_urls.length > 0 && (
           <div className="container mx-auto px-4 py-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>포트폴리오</span>
-                  <Badge variant="outline">{influencer.portfolio_urls.length}개</Badge>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5" />
+                  포트폴리오
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -435,9 +484,12 @@ export default function InfluencerDetailPage() {
                   <span className="text-sm text-gray-600">인증 상태</span>
                   <span className="text-sm font-medium">
                     {influencer.is_verified ? (
-                      <Badge className="bg-blue-100 text-blue-700">인증됨</Badge>
+                      <span className="flex items-center gap-1 text-blue-600">
+                        <CheckCircle className="h-4 w-4" />
+                        인증 완료
+                      </span>
                     ) : (
-                      <Badge variant="outline">미인증</Badge>
+                      <span className="text-gray-400">미인증</span>
                     )}
                   </span>
                 </div>
@@ -445,50 +497,22 @@ export default function InfluencerDetailPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* 문의하기 섹션 - 데스크톱 */}
-        <div className="hidden sm:block container mx-auto px-4 pb-8">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">이 인플루언서와 협업하고 싶으신가요?</h3>
-              <p className="text-gray-600 mb-4">지금 바로 문의해보세요</p>
-              <Button 
-                size="lg" 
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => alert('문의 기능은 준비 중입니다')}
-              >
-                <MessageCircle className="h-5 w-5 mr-2" />
-                문의하기
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* 문의하기 버튼 - 모바일 하단 고정 */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-30">
-        <Button 
-          size="lg" 
-          className="w-full bg-green-600 hover:bg-green-700"
-          onClick={() => alert('문의 기능은 준비 중입니다')}
-        >
-          <MessageCircle className="h-5 w-5 mr-2" />
-          문의하기
-        </Button>
       </div>
 
       {/* 이미지 모달 */}
       {selectedImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
-          <button
-            className="absolute top-4 right-4 text-white hover:text-gray-300"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-white hover:bg-white/20"
             onClick={() => setSelectedImage(null)}
           >
-            <X className="h-8 w-8" />
-          </button>
+            <X className="h-6 w-6" />
+          </Button>
           <img
             src={selectedImage}
             alt="Portfolio"
@@ -496,6 +520,21 @@ export default function InfluencerDetailPage() {
           />
         </div>
       )}
+
+      {/* 하단 고정 버튼 (모바일) */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t sm:hidden">
+        <Button
+          className="w-full bg-[#51a66f] hover:bg-[#449960]"
+          size="lg"
+          onClick={() => {
+            // 협업 제안 또는 연락하기 기능
+            router.push(`/advertiser/contact/${influencer.id}`)
+          }}
+        >
+          <MessageCircle className="h-5 w-5 mr-2" />
+          협업 제안하기
+        </Button>
+      </div>
     </div>
   )
 }

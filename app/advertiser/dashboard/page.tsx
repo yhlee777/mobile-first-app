@@ -1,5 +1,3 @@
-// app/advertiser/page.tsx
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -24,7 +22,6 @@ import {
   Heart, 
   Bell,
   Users,
-  RefreshCw,
   Loader2,
   LogOut
 } from 'lucide-react'
@@ -181,37 +178,32 @@ export default function AdvertiserDashboard() {
     
     return matchesSearch && matchesCategory && matchesLocation && matchesFollowerTier
   }).sort((a, b) => {
-    switch (sortBy) {
-      case '팔로워순':
-        return (b.followers_count || 0) - (a.followers_count || 0)
-      case '참여율순':
-        return (b.engagement_rate || 0) - (a.engagement_rate || 0)
-      case '최신순':
-        return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
-      default:
-        return 0
+    if (sortBy === '팔로워순') {
+      return (b.followers_count || 0) - (a.followers_count || 0)
+    } else if (sortBy === '참여율순') {
+      return (b.engagement_rate || 0) - (a.engagement_rate || 0)
+    } else if (sortBy === '최신순') {
+      return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
     }
+    return 0
   })
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
-          <p className="text-gray-500">인플루언서 목록을 불러오는 중...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50">
+        <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20 pb-20 md:pb-0 md:pl-64">
+    <div className="min-h-screen bg-gradient-to-br from-green-50/30 via-white to-emerald-50/10">
       {/* 모바일 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b md:hidden">
+      <header className="md:hidden sticky top-0 z-30 bg-white border-b">
         <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-[#51a66f]">Itda</h1>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-lg font-bold text-gray-800">인플루언서 찾기</h1>
+            <div className="flex items-center gap-1">
               {/* 알림 버튼 */}
               <Button
                 variant="ghost"
@@ -256,14 +248,37 @@ export default function AdvertiserDashboard() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">인플루언서 찾기</h2>
             <div className="flex items-center gap-3">
-              {/* ... 기존 버튼들 ... */}
+              <Button
+                variant="outline"
+                onClick={() => router.push('/advertiser/campaigns')}
+              >
+                내 캠페인 관리
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/notifications')}
+                className="relative"
+              >
+                <Bell className="h-5 w-5" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1">
+                    {notificationCount}
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
       {/* 검색 및 필터 섹션 */}
-      <div className="px-4 md:px-6 py-3 bg-white/90 backdrop-blur-sm border-b">
+      <div className="px-4 md:px-6 py-3 bg-white/90 backdrop-blur-sm border-b sticky top-[57px] md:top-[73px] z-20">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -278,14 +293,81 @@ export default function AdvertiserDashboard() {
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
+            className={showFilters ? 'bg-[#51a66f] text-white' : ''}
           >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
 
+        {/* 필터 옵션 - 토글 시 표시 */}
         {showFilters && (
-          <div className="mt-3 p-3 bg-gray-50/50 rounded-lg">
-            {/* ... 필터 옵션들 ... */}
+          <div className="mt-3 p-3 bg-gray-50/50 rounded-lg space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {/* 카테고리 필터 */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="카테고리" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* 팔로워 규모 필터 */}
+              <Select value={followerTier} onValueChange={setFollowerTier}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="팔로워" />
+                </SelectTrigger>
+                <SelectContent>
+                  {followerTiers.map(tier => (
+                    <SelectItem key={tier} value={tier}>{tier}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* 지역 필터 */}
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="지역" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(loc => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* 정렬 옵션 */}
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortType)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="정렬" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="팔로워순">팔로워순</SelectItem>
+                  <SelectItem value="참여율순">참여율순</SelectItem>
+                  <SelectItem value="최신순">최신순</SelectItem>
+                  <SelectItem value="찜한목록">찜한목록</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 필터 초기화 버튼 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCategoryFilter('전체')
+                setFollowerTier('전체')
+                setLocationFilter('전체')
+                setSortBy('팔로워순')
+                setSearchTerm('')
+              }}
+              className="text-xs text-gray-600"
+            >
+              필터 초기화
+            </Button>
           </div>
         )}
       </div>
@@ -296,15 +378,6 @@ export default function AdvertiserDashboard() {
           <span className="text-sm text-gray-600">
             총 <span className="font-semibold text-gray-900">{filteredInfluencers.length}</span>명의 인플루언서
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => loadInfluencers()}
-            className="text-xs"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            새로고침
-          </Button>
         </div>
       </div>
 
