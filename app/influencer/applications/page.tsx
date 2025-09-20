@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
@@ -37,8 +37,9 @@ interface Application {
   }
 }
 
-export default function ApplicationsPage() {
-  const searchParams = useSearchParams()  // 추가
+// 실제 컴포넌트를 분리
+function ApplicationsContent() {
+  const searchParams = useSearchParams()
   const [applications, setApplications] = useState<Application[]>([])
   
   // URL 파라미터에서 초기 탭 설정
@@ -243,5 +244,18 @@ export default function ApplicationsPage() {
 
       <BottomNav />
     </div>
+  )
+}
+
+// 메인 컴포넌트를 Suspense로 감싸기
+export default function ApplicationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/30 via-white to-emerald-50/20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
+      </div>
+    }>
+      <ApplicationsContent />
+    </Suspense>
   )
 }
