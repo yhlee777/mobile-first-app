@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AITextImprover } from '@/components/ui/ai-text-improver';
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -152,28 +153,26 @@ export default function NewCampaignPage() {
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="description">캠페인 설명 *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="캠페인의 목적, 홍보할 제품/서비스, 원하는 콘텐츠 스타일 등을 자세히 설명해주세요"
-                  rows={4}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="requirements">인플루언서 요구사항</Label>
-                <Textarea
-                  id="requirements"
-                  value={formData.requirements}
-                  onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                  placeholder="예: 팔로워 1만 이상, 20-30대 타겟, 패션/뷰티 카테고리 선호"
-                  rows={3}
-                />
-              </div>
+              {/* 캠페인 설명 입력 부분 */}
+<div>
+  <Label htmlFor="description">캠페인 설명 *</Label>
+  <Textarea
+    id="description"
+    value={formData.description}
+    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+    placeholder="캠페인 설명을 입력하세요"
+    rows={4}
+    required
+  />
+  {/* AI 버튼 추가 - 카테고리도 함께 전달 */}
+  <div className="mt-2">
+    <AITextImprover 
+      text={formData.description}
+      category={formData.category}  // 선택한 카테고리 전달
+      onImproved={(improved) => setFormData({ ...formData, description: improved })}
+    />
+  </div>
+</div>
             </CardContent>
           </Card>
 

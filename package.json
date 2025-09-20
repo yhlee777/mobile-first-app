@@ -10,6 +10,7 @@
     "seed": "tsx scripts/seed-influencers.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.63.0",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-progress": "^1.0.3",
