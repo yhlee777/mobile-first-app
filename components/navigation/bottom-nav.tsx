@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Megaphone, UserCircle } from 'lucide-react'
+import { Home, Users2, Megaphone, UserCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -90,25 +90,42 @@ export default function BottomNav() {
       }
     },
     {
+      label: '파트너',
+      icon: Users2,
+      onClick: () => {
+        if (userType === 'advertiser') {
+          router.push('/advertiser/partners')
+        } else {
+          router.push('/influencer/partners')
+        }
+      },
+      isActive: () => {
+        if (userType === 'advertiser') {
+          return pathname.startsWith('/advertiser/partners')
+        }
+        return pathname.startsWith('/influencer/partners')
+      }
+    },
+    {
       label: '캠페인',
       icon: Megaphone,
       onClick: () => {
-        // 광고주와 인플루언서 모두 전체 캠페인 보기로 이동
+        // 광고주도 전체 캠페인 보기로 변경
         if (userType === 'advertiser') {
-          router.push('/advertiser/explore')  // 광고주용 전체 캠페인 탐색
+          router.push('/advertiser/explore')
         } else {
           router.push('/influencer/campaigns')
         }
       },
       isActive: () => {
         if (userType === 'advertiser') {
-          return pathname === '/advertiser/explore'
+          return pathname.startsWith('/advertiser/explore') || pathname.startsWith('/advertiser/campaigns')
         }
-        return pathname.includes('/influencer/campaigns')
+        return pathname.startsWith('/influencer/campaigns')
       }
     },
     {
-      label: '내프로필',
+      label: '프로필',
       icon: UserCircle,
       onClick: () => {
         if (userType === 'advertiser') {
@@ -117,13 +134,18 @@ export default function BottomNav() {
           router.push('/influencer/profile')
         }
       },
-      isActive: () => pathname.includes('/profile')
+      isActive: () => {
+        if (userType === 'advertiser') {
+          return pathname.startsWith('/advertiser/profile')
+        }
+        return pathname.startsWith('/influencer/profile')
+      }
     }
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden z-50">
-      <div className="flex items-center justify-around h-16">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-50">
+      <div className="grid grid-cols-4 h-16">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = item.isActive()
@@ -131,18 +153,19 @@ export default function BottomNav() {
           return (
             <button
               key={item.label}
-              type="button"
               onClick={item.onClick}
-              className={`flex flex-col items-center justify-center flex-1 h-full space-y-1 transition-colors ${
-                isActive ? 'text-[#51a66f]' : 'text-gray-500'
+              className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+                isActive 
+                  ? 'text-[#51a66f]' 
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Icon className={`h-6 w-6 ${isActive ? 'stroke-2' : ''}`} />
+              <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
               <span className="text-xs font-medium">{item.label}</span>
             </button>
           )
         })}
       </div>
-    </nav>
+    </div>
   )
 }

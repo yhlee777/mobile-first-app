@@ -1,5 +1,3 @@
-// app/influencer/profile/page.tsx
-
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -16,7 +14,8 @@ import {
   LogOut,
   MapPin,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  ExternalLink
 } from 'lucide-react'
 
 interface InfluencerProfile {
@@ -33,11 +32,11 @@ interface InfluencerProfile {
   is_verified?: boolean
 }
 
-export default function ProfilePage() {
-  const [profile, setProfile] = useState<InfluencerProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+export default function InfluencerProfilePage() {
   const router = useRouter()
   const supabase = createClient()
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<InfluencerProfile | null>(null)
 
   useEffect(() => {
     loadProfile()
@@ -46,6 +45,7 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
+      
       if (!user) {
         router.push('/login')
         return
@@ -55,10 +55,14 @@ export default function ProfilePage() {
         .from('influencers')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle() // single() 대신 maybeSingle() 사용
 
       if (error) {
         console.error('Error loading profile:', error)
+        // 프로필이 없으면 생성 페이지로 이동하거나 기본값 설정
+        if (error.code === 'PGRST116') {
+          router.push('/influencer/profile/create')
+        }
         return
       }
 
@@ -77,7 +81,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20">
         <Loader2 className="h-8 w-8 animate-spin text-[#51a66f]" />
       </div>
     )
@@ -85,8 +89,13 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>프로필을 찾을 수 없습니다</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">프로필을 찾을 수 없습니다</p>
+          <Button onClick={() => router.push('/influencer/profile/edit')}>
+            프로필 만들기
+          </Button>
+        </div>
       </div>
     )
   }
@@ -94,23 +103,23 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50/40 via-white to-emerald-50/20 pb-20">
       {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b">
+      <header className="bg-white/95 backdrop-blur-sm border-b sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">내 프로필</h1>
+            <h1 className="text-lg font-semibold">내 프로필</h1>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push('/influencer/profile/edit')}
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-4 w-4 mr-1" />
+                편집
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-red-600 hover:bg-red-50"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -119,12 +128,11 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* 프로필 내용 */}
       <main className="px-4 py-6">
-        {/* 프로필 이미지 & 기본 정보 */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
+        {/* 프로필 정보 */}
+        <Card className="mb-4 bg-white/90 backdrop-blur-sm shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
               {profile.profile_image ? (
                 <img
                   src={profile.profile_image}
@@ -184,40 +192,32 @@ export default function ProfilePage() {
                   <Users className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">팔로워</span>
                 </div>
-                <p className="text-2xl font-bold mt-1">
-                  {profile.followers_count?.toLocaleString() || '0'}
+                <p className="text-2xl font-bold text-[#51a66f]">
+                  {profile.followers_count.toLocaleString()}
                 </p>
               </div>
-              
               <div>
                 <div className="flex items-center gap-2">
                   <Heart className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">참여율</span>
                 </div>
-                <p className="text-2xl font-bold mt-1">
-                  {profile.engagement_rate || '0'}%
+                <p className="text-2xl font-bold text-[#51a66f]">
+                  {profile.engagement_rate}%
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 빠른 메뉴 */}
-        <div className="mt-4 space-y-3">
-          <Button
-            className="w-full bg-[#51a66f] hover:bg-[#449960]"
-            onClick={() => router.push('/influencer/campaigns')}
-          >
-            캠페인 찾아보기
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => router.push('/influencer/profile/edit')}
-          >
-            프로필 편집하기
-          </Button>
-        </div>
+        {/* Instagram 연동 버튼 - 디자인 개선 */}
+        <button
+          className="w-full mt-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white py-3 rounded-lg flex items-center justify-center gap-2 font-medium shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => window.open(`https://instagram.com/${profile.instagram_handle}`, '_blank')}
+        >
+          <Instagram className="h-5 w-5" />
+          <span>Instagram 프로필 보기</span>
+          <ExternalLink className="h-4 w-4" />
+        </button>
       </main>
     </div>
   )
