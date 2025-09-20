@@ -8,16 +8,24 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useRouter, useParams } from 'next/navigation'
+import BottomNav from '@/components/navigation/bottom-nav'
 import { 
   ArrowLeft, 
   Calendar, 
   DollarSign, 
   Building,
-  Send,
+  Users,
+  Hash,
+  MapPin,
   Loader2,
+  Send,
   CheckCircle,
-  XCircle,
-  Clock
+  AlertCircle,
+  Clock,
+  Instagram,
+  Heart,
+  MessageCircle,
+  Target
 } from 'lucide-react'
 
 interface Campaign {
@@ -31,28 +39,29 @@ interface Campaign {
   start_date: string
   end_date: string
   status: string
+  created_at: string
   brands: {
+    id: string
     name: string
-    company_name: string
-    description: string
-    logo_url: string
+    logo_url?: string
+    contact_email?: string
+    description?: string
   }
 }
 
 interface Application {
   id: string
   status: string
-  message: string
+  proposal: string
   created_at: string
 }
 
 export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [application, setApplication] = useState<Application | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [proposal, setProposal] = useState('')
   const [applying, setApplying] = useState(false)
-  const [showApplicationForm, setShowApplicationForm] = useState(false)
-  const [applicationMessage, setApplicationMessage] = useState('')
+  const [loading, setLoading] = useState(true)
   const [influencerId, setInfluencerId] = useState<string | null>(null)
   
   const router = useRouter()
@@ -61,297 +70,360 @@ export default function CampaignDetailPage() {
 
   useEffect(() => {
     if (params.id) {
-      loadCampaignAndApplication(params.id as string)
+      loadCampaign(params.id as string)
     }
   }, [params.id])
 
-  const loadCampaignAndApplication = async (campaignId: string) => {
+  const loadCampaign = async (campaignId: string) => {
     try {
       setLoading(true)
       
+      // 현재 사용자 확인
       const { data: { user } } = await supabase.auth.getUser()
+      
       if (!user) {
         router.push('/login')
         return
       }
 
-      const { data: profile } = await supabase
+      // 인플루언서 정보 가져오기
+      const { data: influencer } = await supabase
         .from('influencers')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (profile) {
-        setInfluencerId(profile.id)
+      if (influencer) {
+        setInfluencerId(influencer.id)
+        
+        // 기존 지원 내역 확인
+        const { data: existingApp } = await supabase
+          .from('campaign_applications')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .eq('influencer_id', influencer.id)
+          .single()
+        
+        if (existingApp) {
+          setApplication(existingApp)
+          setProposal(existingApp.proposal || '')
+        }
       }
 
+      // 캠페인 정보 가져오기
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .select(`
           *,
-          brands (name, company_name, description, logo_url)
+          brands (
+            id,
+            name,
+            logo_url,
+            contact_email,
+            description
+          )
         `)
         .eq('id', campaignId)
         .single()
 
       if (campaignError) throw campaignError
       setCampaign(campaignData)
-
-      if (profile) {
-        const { data: applicationData } = await supabase
-          .from('campaign_applications')
-          .select('*')
-          .eq('campaign_id', campaignId)
-          .eq('influencer_id', profile.id)
-          .single()
-
-        if (applicationData) {
-          setApplication(applicationData)
-        }
-      }
       
     } catch (error) {
       console.error('Error loading campaign:', error)
+      router.push('/influencer/campaigns')
     } finally {
       setLoading(false)
     }
   }
 
-  const submitApplication = async () => {
-    if (!influencerId || !campaign) return
+  const handleApply = async () => {
+    if (!influencerId || !campaign || !proposal.trim()) {
+      alert('제안 내용을 입력해주세요')
+      return
+    }
 
     setApplying(true)
+    
     try {
       const { error } = await supabase
         .from('campaign_applications')
         .insert({
           campaign_id: campaign.id,
           influencer_id: influencerId,
-          message: applicationMessage,
+          proposal,
           status: 'pending'
         })
 
       if (error) throw error
-
-      alert('지원이 완료되었습니다!')
-      await loadCampaignAndApplication(campaign.id)
-      setShowApplicationForm(false)
-      setApplicationMessage('')
-    } catch (error: any) {
-      if (error.code === '23505') {
-        alert('이미 지원한 캠페인입니다')
-      } else {
-        console.error('Error applying:', error)
-        alert('지원 중 오류가 발생했습니다')
+      
+      // 지원 내역 다시 로드
+      const { data: newApp } = await supabase
+        .from('campaign_applications')
+        .select('*')
+        .eq('campaign_id', campaign.id)
+        .eq('influencer_id', influencerId)
+        .single()
+      
+      if (newApp) {
+        setApplication(newApp)
       }
+      
+      alert('지원이 완료되었습니다!')
+      
+    } catch (error: any) {
+      console.error('Apply error:', error)
+      alert(error.message || '지원 중 오류가 발생했습니다')
     } finally {
       setApplying(false)
     }
   }
 
-  const getStatusBadge = () => {
-    if (!application) return null
+  const formatBudget = (min: number, max: number) => {
+    const format = (n: number) => {
+      if (n >= 1000000) return `${(n / 1000000).toFixed(0)}백만`
+      if (n >= 10000) return `${(n / 10000).toFixed(0)}만`
+      return n.toLocaleString()
+    }
+    return `${format(min)} ~ ${format(max)}원`
+  }
 
-    const config: Record<string, { color: string, icon: any, text: string }> = {
-      'pending': { 
-        color: 'bg-yellow-100 text-yellow-700', 
-        icon: Clock,
-        text: '검토중'
+  const getApplicationStatus = () => {
+    if (!application) return null
+    
+    const statusConfig = {
+      pending: {
+        icon: <Clock className="h-4 w-4" />,
+        label: '검토 중',
+        color: 'bg-yellow-50 text-yellow-700 border-yellow-200'
       },
-      'accepted': { 
-        color: 'bg-green-100 text-green-700',
-        icon: CheckCircle,
-        text: '승인됨'
+      accepted: {
+        icon: <CheckCircle className="h-4 w-4" />,
+        label: '승인됨',
+        color: 'bg-green-50 text-green-700 border-green-200'
       },
-      'rejected': { 
-        color: 'bg-red-100 text-red-700',
-        icon: XCircle,
-        text: '거절됨'
+      rejected: {
+        icon: <AlertCircle className="h-4 w-4" />,
+        label: '거절됨',
+        color: 'bg-red-50 text-red-700 border-red-200'
       }
     }
     
-    const cfg = config[application.status] || config.pending
+    const config = statusConfig[application.status as keyof typeof statusConfig]
+    
     return (
-      <Badge className={`${cfg.color} flex items-center gap-1`}>
-        <cfg.icon className="h-3 w-3" />
-        {cfg.text}
-      </Badge>
+      <div className={`flex items-center gap-2 p-3 rounded-lg border ${config.color}`}>
+        {config.icon}
+        <span className="font-semibold">{config.label}</span>
+        <span className="text-sm">
+          ({new Date(application.created_at).toLocaleDateString('ko-KR')})
+        </span>
+      </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50/40 via-white to-pink-50/30">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
     )
   }
 
   if (!campaign) {
-    return <div>캠페인을 찾을 수 없습니다</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>캠페인을 찾을 수 없습니다</p>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white pb-20">
-      <header className="bg-white border-b sticky top-0 z-40">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50/40 via-white to-pink-50/30 pb-20">
+      {/* 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b">
         <div className="px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/influencer/campaigns')}
+              onClick={() => router.push('/influencer/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              홈으로
             </Button>
-            <div className="flex-1">
-              <h1 className="text-lg font-bold line-clamp-1">{campaign.title}</h1>
-              <p className="text-xs text-gray-500">캠페인 상세</p>
-            </div>
+            <Badge variant="outline">
+              {campaign.category || '카테고리 없음'}
+            </Badge>
           </div>
         </div>
       </header>
 
-      <main className="container max-w-2xl mx-auto px-4 py-6 space-y-4">
-        <Card>
+      {/* 브랜드 정보 */}
+      <div className="px-4 py-6">
+        <Card className="bg-white/90 backdrop-blur-sm mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              {campaign.brands.logo_url ? (
+                <img
+                  src={campaign.brands.logo_url}
+                  alt={campaign.brands.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                  <Building className="h-6 w-6 text-gray-400" />
+                </div>
+              )}
+              
+              <div className="flex-1">
+                <h3 className="font-semibold">{campaign.brands.name}</h3>
+                {campaign.brands.description && (
+                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                    {campaign.brands.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 캠페인 정보 */}
+        <Card className="bg-white/90 backdrop-blur-sm mb-4">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              브랜드 정보
-            </CardTitle>
+            <CardTitle className="text-xl">{campaign.title}</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                {campaign.status === 'active' ? '진행중' : '마감'}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <h3 className="font-semibold">{campaign.brands?.name}</h3>
-              {campaign.brands?.company_name && (
-                <p className="text-sm text-gray-500">{campaign.brands.company_name}</p>
-              )}
-              {campaign.brands?.description && (
-                <p className="text-sm text-gray-600">{campaign.brands.description}</p>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                  <Target className="h-4 w-4 text-purple-600" />
+                  캠페인 소개
+                </h4>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {campaign.description}
+                </p>
+              </div>
+              
+              {campaign.requirements && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                    <CheckCircle className="h-4 w-4 text-purple-600" />
+                    참여 조건
+                  </h4>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {campaign.requirements}
+                  </p>
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>캠페인 정보</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2">설명</h3>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{campaign.description}</p>
-            </div>
-            
-            {campaign.requirements && (
-              <div>
-                <h3 className="font-semibold mb-2">요구사항</h3>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{campaign.requirements}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-gray-500" />
+        {/* 캠페인 상세 정보 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Card className="bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500">예산</p>
-                  <p className="text-sm font-semibold">
-                    {campaign.budget_min?.toLocaleString()} ~ {campaign.budget_max?.toLocaleString()}원
+                  <p className="text-sm font-semibold text-purple-600">
+                    {formatBudget(campaign.budget_min, campaign.budget_max)}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-xs text-gray-500">기간</p>
-                  <p className="text-sm font-semibold">
-                    {campaign.start_date || '미정'} ~ {campaign.end_date || '미정'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {application ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>내 지원 현황</span>
-                {getStatusBadge()}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500">지원 메시지</p>
-                <p className="text-sm mt-1">{application.message || '(메시지 없음)'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">지원일</p>
-                <p className="text-sm mt-1">
-                  {new Date(application.created_at).toLocaleDateString('ko-KR')}
-                </p>
+                <DollarSign className="h-5 w-5 text-purple-600 opacity-50" />
               </div>
             </CardContent>
           </Card>
-        ) : showApplicationForm ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>캠페인 지원하기</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="message">브랜드에게 전달할 메시지</Label>
-                <Textarea
-                  id="message"
-                  value={applicationMessage}
-                  onChange={(e) => setApplicationMessage(e.target.value)}
-                  placeholder="자기소개, 캠페인 참여 의지, 콘텐츠 계획 등을 자유롭게 작성해주세요"
-                  rows={5}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  브랜드 제시 예산: {campaign.budget_min?.toLocaleString()} ~ {campaign.budget_max?.toLocaleString()}원
-                </p>
+          
+          <Card className="bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">캠페인 기간</p>
+                  <p className="text-sm font-semibold">
+                    {campaign.start_date 
+                      ? new Date(campaign.start_date).toLocaleDateString('ko-KR')
+                      : '미정'}
+                  </p>
+                </div>
+                <Calendar className="h-5 w-5 text-purple-600 opacity-50" />
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              <div className="flex gap-2">
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                  onClick={submitApplication}
-                  disabled={applying}
-                >
-                  {applying ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  지원하기
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowApplicationForm(false)
-                    setApplicationMessage('')
-                  }}
-                  disabled={applying}
-                >
-                  취소
-                </Button>
+        {/* 지원 상태 또는 지원 폼 */}
+        {application ? (
+          <Card className="bg-white/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">지원 현황</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {getApplicationStatus()}
+              <div className="mt-4">
+                <Label className="text-sm font-semibold">내 제안</Label>
+                <p className="text-sm text-gray-700 mt-2 p-3 bg-gray-50 rounded-lg">
+                  {application.proposal}
+                </p>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
-            <Button
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="lg"
-              onClick={() => setShowApplicationForm(true)}
-            >
-              <Send className="h-5 w-5 mr-2" />
-              캠페인 지원하기
-            </Button>
-          </div>
+          <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Send className="h-5 w-5 text-purple-600" />
+                캠페인 지원하기
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="proposal">제안 내용 *</Label>
+                  <Textarea
+                    id="proposal"
+                    placeholder="어떻게 이 캠페인을 진행하실 계획인가요? 본인의 강점과 콘텐츠 계획을 자유롭게 작성해주세요."
+                    value={proposal}
+                    onChange={(e) => setProposal(e.target.value)}
+                    rows={5}
+                    className="mt-2"
+                    disabled={applying}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    구체적인 계획을 작성할수록 선정 확률이 높아집니다
+                  </p>
+                </div>
+                
+                <Button 
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  onClick={handleApply}
+                  disabled={applying || !proposal.trim() || campaign.status !== 'active'}
+                >
+                  {applying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      지원 중...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      지원하기
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
-      </main>
+      </div>
+
+      <BottomNav />
     </div>
   )
 }

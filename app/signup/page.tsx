@@ -227,7 +227,7 @@ function SignupForm() {
       // 5. 성공 메시지 후 홈으로 이동
       setSuccessMessage('회원가입이 완료되었습니다! 홈으로 이동합니다...')
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push('/influencer/dashboard')
       }, 1500)
       
     } catch (error: any) {
@@ -291,7 +291,7 @@ function SignupForm() {
       // 5. 성공 메시지 후 홈으로 이동
       setSuccessMessage('회원가입이 완료되었습니다! 홈으로 이동합니다...')
       setTimeout(() => {
-        router.push('/advertiser')
+        router.push('/advertiser/dashboard')
       }, 1500)
       
     } catch (error: any) {

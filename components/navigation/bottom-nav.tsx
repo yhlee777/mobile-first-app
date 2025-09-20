@@ -1,5 +1,3 @@
-// components/navigation/bottom-nav.tsx
-
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
@@ -26,7 +24,6 @@ export default function BottomNav() {
       if (user) {
         setIsLoggedIn(true)
         
-        // 먼저 users 테이블에서 user_type 확인
         const { data: userData } = await supabase
           .from('users')
           .select('user_type')
@@ -36,7 +33,7 @@ export default function BottomNav() {
         if (userData?.user_type) {
           setUserType(userData.user_type)
         } else {
-          // users 테이블에 없으면 각 테이블 확인
+          // 각 테이블 확인 로직
           const { data: influencer } = await supabase
             .from('influencers')
             .select('id')
@@ -46,13 +43,13 @@ export default function BottomNav() {
           if (influencer) {
             setUserType('influencer')
           } else {
-            const { data: advertiser } = await supabase
+            const { data: brand } = await supabase
               .from('brands')
               .select('id')
               .eq('user_id', user.id)
               .single()
               
-            if (advertiser) {
+            if (brand) {
               setUserType('advertiser')
             }
           }
@@ -96,13 +93,19 @@ export default function BottomNav() {
       label: '캠페인',
       icon: Megaphone,
       onClick: () => {
+        // 광고주와 인플루언서 모두 전체 캠페인 보기로 이동
         if (userType === 'advertiser') {
-          router.push('/advertiser/campaigns')
+          router.push('/advertiser/explore')  // 광고주용 전체 캠페인 탐색
         } else {
           router.push('/influencer/campaigns')
         }
       },
-      isActive: () => pathname.includes('/campaigns')
+      isActive: () => {
+        if (userType === 'advertiser') {
+          return pathname === '/advertiser/explore'
+        }
+        return pathname.includes('/influencer/campaigns')
+      }
     },
     {
       label: '내프로필',

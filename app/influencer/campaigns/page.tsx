@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -14,15 +14,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useRouter } from 'next/navigation'
+import BottomNav from '@/components/navigation/bottom-nav'
 import { 
-  ArrowLeft, 
+  Search, 
+  Filter, 
+  TrendingUp, 
   Calendar, 
-  DollarSign, 
-  Search,
-  Filter,
-  Briefcase,
-  CheckCircle,
-  Loader2
+  DollarSign,
+  Users,
+  Building,
+  ChevronRight,
+  Sparkles,
+  Clock,
+  Star,
+  Zap,
+  Target
 } from 'lucide-react'
 
 interface Campaign {
@@ -38,83 +44,42 @@ interface Campaign {
   created_at: string
   brands: {
     name: string
-    logo_url: string
+    logo_url?: string
   }
-  campaign_applications: {
-    id: string
-    status: string
-  }[]
-}
-
-interface InfluencerProfile {
-  id: string
-  category: string
+  campaign_applications?: any[]
 }
 
 const categories = ['전체', '패션', '뷰티', '음식', '여행', '피트니스', '테크', '라이프스타일', '육아', '기타']
 
-export default function InfluencerCampaignsPage() {
+export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [myProfile, setMyProfile] = useState<InfluencerProfile | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
-  
+  const [categoryFilter, setCategoryFilter] = useState('전체')
+  const [sortBy, setSortBy] = useState('최신순')
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    loadCampaignsAndProfile()
+    loadCampaigns()
   }, [])
 
-  const loadCampaignsAndProfile = async () => {
+  const loadCampaigns = async () => {
     try {
       setLoading(true)
-      
-      // 현재 인플루언서 프로필 가져오기
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      const { data: profileData } = await supabase
-        .from('influencers')
-        .select('id, category')
-        .eq('user_id', user.id)
-        .single()
-
-      if (profileData) {
-        setMyProfile(profileData)
-        setCategoryFilter(profileData.category || '전체')
-      }
-
-      // 캠페인 목록 가져오기 (내 지원 정보 포함)
       const { data, error } = await supabase
         .from('campaigns')
         .select(`
           *,
           brands (name, logo_url),
-          campaign_applications!left (
-            id,
-            status
-          )
+          campaign_applications (id)
         `)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-
-      // 내가 지원한 캠페인 표시
-      const campaignsWithApplications = data?.map(campaign => ({
-        ...campaign,
-        campaign_applications: campaign.campaign_applications?.filter(
-          (app: any) => profileData && app.influencer_id === profileData.id
-        ) || []
-      }))
-
-      setCampaigns(campaignsWithApplications || [])
+      if (!error && data) {
+        setCampaigns(data)
+      }
     } catch (error) {
       console.error('Error loading campaigns:', error)
     } finally {
@@ -128,184 +93,255 @@ export default function InfluencerCampaignsPage() {
       if (n >= 10000) return `${(n / 10000).toFixed(0)}만`
       return n.toLocaleString()
     }
-    return `${format(min)} ~ ${format(max)}원`
-  }
-
-  const getApplicationStatus = (campaign: Campaign) => {
-    if (campaign.campaign_applications?.length > 0) {
-      const app = campaign.campaign_applications[0]
-      switch (app.status) {
-        case 'pending':
-          return <Badge className="bg-yellow-100 text-yellow-700">지원완료</Badge>
-        case 'accepted':
-          return <Badge className="bg-green-100 text-green-700">승인됨</Badge>
-        case 'rejected':
-          return <Badge className="bg-red-100 text-red-700">거절됨</Badge>
-        default:
-          return null
-      }
-    }
-    return null
+    return `${format(min)}~${format(max)}원`
   }
 
   const filteredCampaigns = campaigns.filter(campaign => {
     const matchesSearch = campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          campaign.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesCategory = categoryFilter === '전체' || 
-                          !categoryFilter || 
-                          campaign.category === categoryFilter ||
-                          (!campaign.category && categoryFilter === '기타')
-    
+    const matchesCategory = categoryFilter === '전체' || campaign.category === categoryFilter
     return matchesSearch && matchesCategory
+  }).sort((a, b) => {
+    switch(sortBy) {
+      case '인기순':
+        return (b.campaign_applications?.length || 0) - (a.campaign_applications?.length || 0)
+      case '예산높은순':
+        return b.budget_max - a.budget_max
+      default:
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    }
   })
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-      </div>
-    )
+  const hotCampaigns = [...campaigns]
+    .sort((a, b) => (b.campaign_applications?.length || 0) - (a.campaign_applications?.length || 0))
+    .slice(0, 3)
+
+  const calculateDaysLeft = (endDate: string) => {
+    const end = new Date(endDate)
+    const now = new Date()
+    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    return diff > 0 ? diff : 0
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50/30 to-white">
-      <header className="bg-white border-b sticky top-0 z-40">
+    <div className="min-h-screen bg-gradient-to-br from-green-50/30 via-white to-emerald-50/20 pb-20">
+      {/* 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push('/dashboard')}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <h1 className="text-lg font-bold">캠페인 찾기</h1>
-                <p className="text-xs text-gray-500">참여할 캠페인을 찾아보세요</p>
-              </div>
+            <div>
+              <h1 className="text-lg font-bold">캠페인 찾기</h1>
+              <p className="text-xs text-gray-500">나에게 맞는 캠페인을 찾아보세요</p>
             </div>
-            <Badge variant="outline" className="text-xs">
-              내 카테고리: {myProfile?.category || '미설정'}
+            <Badge className="bg-[#51a66f] text-white">
+              {campaigns.length}개 모집중
             </Badge>
           </div>
         </div>
       </header>
 
-      {/* 검색 및 필터 */}
-      <div className="px-4 py-3 bg-white border-b">
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input 
-              placeholder="캠페인 검색"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 h-9 text-sm"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-3 h-9"
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {showFilters && (
-          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-            <div className="space-y-2">
-              <label className="text-xs font-medium">카테고리</label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat} {cat === myProfile?.category && '(내 카테고리)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 결과 카운트 */}
-      <div className="px-4 py-2 bg-gray-50 border-b">
-        <span className="text-xs text-gray-600">
-          총 <span className="font-semibold text-gray-900">{filteredCampaigns.length}</span>개의 캠페인
-        </span>
-      </div>
-
-      {/* 캠페인 목록 */}
-      <main className="px-4 py-4">
-        {filteredCampaigns.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Briefcase className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
-                {categoryFilter === myProfile?.category 
-                  ? '현재 내 카테고리에 진행중인 캠페인이 없습니다' 
-                  : '해당 카테고리에 진행중인 캠페인이 없습니다'}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => setCategoryFilter('전체')}
-              >
-                전체 캠페인 보기
-              </Button>
+      {/* 통계 카드 */}
+      <div className="px-4 py-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-gradient-to-br from-[#51a66f] to-emerald-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs opacity-90">오늘 등록</p>
+                  <p className="text-2xl font-bold">
+                    {campaigns.filter(c => {
+                      const created = new Date(c.created_at)
+                      const today = new Date()
+                      return created.toDateString() === today.toDateString()
+                    }).length}
+                  </p>
+                </div>
+                <TrendingUp className="h-6 w-6 opacity-50" />
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-3">
-            {filteredCampaigns.map(campaign => (
-              <Card
+          
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs opacity-90">평균 지원자</p>
+                  <p className="text-2xl font-bold">
+                    {campaigns.length > 0 
+                      ? Math.round(campaigns.reduce((acc, c) => acc + (c.campaign_applications?.length || 0), 0) / campaigns.length)
+                      : 0}명
+                  </p>
+                </div>
+                <Users className="h-6 w-6 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* HOT 캠페인 슬라이더 */}
+      {hotCampaigns.length > 0 && (
+        <div className="px-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-full">
+              <Zap className="h-3 w-3 text-red-500" />
+              <span className="text-xs font-semibold text-red-700">HOT</span>
+            </div>
+            <span className="text-sm font-semibold">지금 가장 인기있는 캠페인</span>
+          </div>
+          
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {hotCampaigns.map((campaign, index) => (
+              <Card 
                 key={campaign.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="min-w-[250px] bg-gradient-to-br from-white to-red-50 border-red-200 cursor-pointer hover:shadow-lg transition-all"
                 onClick={() => router.push(`/influencer/campaigns/${campaign.id}`)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-base">{campaign.title}</CardTitle>
-                      <p className="text-xs text-gray-500 mt-1">by {campaign.brands?.name}</p>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-1 bg-red-100 px-2 py-1 rounded-full">
+                      <Star className="h-3 w-3 text-red-600" />
+                      <span className="text-xs font-bold text-red-700">#{index + 1}</span>
                     </div>
-                    {getApplicationStatus(campaign)}
+                    <Badge variant="secondary" className="text-xs">
+                      {campaign.campaign_applications?.length || 0}명 지원
+                    </Badge>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {campaign.description}
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3 text-gray-500" />
-                      <span>{formatBudget(campaign.budget_min, campaign.budget_max)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-gray-500" />
-                      <span>{campaign.start_date} ~ {campaign.end_date}</span>
-                    </div>
-                    {campaign.category && (
-                      <Badge variant="outline" className="text-xs">
-                        {campaign.category}
-                      </Badge>
-                    )}
+                  <h4 className="font-semibold text-sm mb-1 line-clamp-1">{campaign.title}</h4>
+                  <p className="text-xs text-gray-600 mb-2">{campaign.brands?.name}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#51a66f]">
+                      {formatBudget(campaign.budget_min, campaign.budget_max)}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 검색 및 필터 */}
+      <div className="px-4 pb-3 bg-white/90 backdrop-blur-sm sticky top-[65px] z-30 border-b">
+        <div className="flex gap-2 mb-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input 
+              placeholder="캠페인 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-gray-50"
+            />
+          </div>
+          <Button variant="outline" size="icon" className="border-[#51a66f] text-[#51a66f]">
+            <Filter className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="flex gap-2">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="flex-1 bg-gray-50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="flex-1 bg-gray-50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="최신순">최신순</SelectItem>
+              <SelectItem value="인기순">인기순</SelectItem>
+              <SelectItem value="예산높은순">예산 높은순</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* 캠페인 리스트 */}
+      <main className="px-4 py-4">
+        <div className="space-y-3">
+          {filteredCampaigns.map(campaign => {
+            const isNew = new Date(campaign.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+            const daysLeft = campaign.end_date ? calculateDaysLeft(campaign.end_date) : null
+            
+            return (
+              <Card 
+                key={campaign.id}
+                className="bg-white/90 backdrop-blur hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
+                onClick={() => router.push(`/influencer/campaigns/${campaign.id}`)}
+              >
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#51a66f] to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {isNew && (
+                          <Badge className="bg-green-100 text-green-700 text-xs">NEW</Badge>
+                        )}
+                        {daysLeft && daysLeft <= 3 && (
+                          <Badge className="bg-red-100 text-red-700 text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {daysLeft}일 남음
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-sm group-hover:text-[#51a66f] transition-colors">
+                        {campaign.title}
+                      </h3>
+                      <p className="text-xs text-gray-600 flex items-center gap-1 mt-1">
+                        <Building className="h-3 w-3" />
+                        {campaign.brands?.name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                    {campaign.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {campaign.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {campaign.category}
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {campaign.campaign_applications?.length || 0}명 지원
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-bold text-[#51a66f]">
+                        {formatBudget(campaign.budget_min, campaign.budget_max)}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#51a66f] transition-colors" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+        
+        {filteredCampaigns.length === 0 && (
+          <Card className="bg-gray-50">
+            <CardContent className="p-8 text-center">
+              <Sparkles className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">검색 결과가 없습니다</p>
+            </CardContent>
+          </Card>
         )}
       </main>
+
+      <BottomNav />
     </div>
   )
 }
